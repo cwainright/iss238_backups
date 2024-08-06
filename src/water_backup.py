@@ -12,9 +12,9 @@ def _agol_tbl_to_df(in_fc:str, input_fields:list=[], query:str="", skip_nulls:bo
     Args:
         in_fc (str): url to the table (the attribute or standalone table, not the root hosted feature layer)
         input_fields (list, optional): A list containing column names present in `in_fc`. If not empty, selects only the columns provided plus the `OID`. If empty, selects all columns. Defaults to [].
-        query (str, optional): SQL query to filter records from `in_fc`. Defaults to "".
+        query (str, optional): The WHERE clause of a SQL query to filter records from `in_fc`. Defaults to "".
         skip_nulls (bool, optional): If True, will filter-out null rows for any column, including geometry, in `in_fc`. Defaults to False.
-        null_values (list or None, optional): A list of masks for null values. E.g., a user could use a silly value like -999999 instead of np.NaN; `null_values` lets the user cover those cases. Defaults to None.
+        null_values (list or None, optional): A list of masks for null values. E.g., a user could use a silly value like -999999 instead of np.NaN. In that case, you'd provide a list [-999999] for `null_values` to cover those cases. Defaults to None.
 
     Returns:
         pd.DataFrame: The table specified above converted to a dataframe.
@@ -34,17 +34,27 @@ def _agol_tbl_to_df(in_fc:str, input_fields:list=[], query:str="", skip_nulls:bo
 
         df = watb._agol_tbl_to_df(in_fc=srcas.WATER_TBL_GRABSAMPLE_URL, input_fields=mycols)
         
-        # example 3, returns all fields and rows matching criteria in `myqry`
+        # example 3, returns fields specified in `mycols` and rows matching criteria in `myqry`
 
         myqry = "delete_grabsample = 'no' or delete_grabsample IS NULL" # note single quotes and double-quotes
 
-        df = watb._agol_tbl_to_df(in_fc=srcas.WATER_TBL_GRABSAMPLE_URL, query=myqry)
+        df = watb._agol_tbl_to_df(in_fc=srcas.WATER_TBL_GRABSAMPLE_URL, input_fields=mycols, query=myqry)
+
+        # example 4, query each table from the hosted feature
+
+        df = wtb._agol_tbl_to_df(in_fc=src_assets.WATER_TBL_MAIN_URL)
+
+        df = wtb._agol_tbl_to_df(in_fc=src_assets.WATER_TBL_YSI_URL)
+
+        df = wtb._agol_tbl_to_df(in_fc=src_assets.WATER_TBL_GRABSAMPLE_URL)
+
+        df = wtb._agol_tbl_to_df(in_fc=src_assets.WATER_TBL_PHOTO_URL)
 
     """
     # if user does not specify the columns they want, return all of the columns
     if len(input_fields)==0:
         exclusions = [
-            # 'objectid'
+            'Shape' # the geometry of an point is returned as a 1x2 array (similar to coordinates e.g., [5.68434189e-14, 5.68434189e-14]); the returning array `np_array` must be 1-dimensional
         ]
         exclusions.extend([x.name for x in arcpy.ListFields(in_fc) if 'entry_other' in x.name]) # fields like 'entry_other_anc_bottle_size' break the arcpy.da.TableToNumPyArray() call for reasons...?
         input_fields = [x.name for x in arcpy.ListFields(in_fc) if x.name not in exclusions]
@@ -56,5 +66,15 @@ def _agol_tbl_to_df(in_fc:str, input_fields:list=[], query:str="", skip_nulls:bo
         final_fields = input_fields.copy()
     np_array = arcpy.da.TableToNumPyArray(in_fc, final_fields, query, skip_nulls, null_values)
     object_id_index = np_array[OIDFieldName]
-    fc_dataframe = pd.DataFrame(np_array, columns=final_fields, index=object_id_index)
-    return fc_dataframe
+    # handle exceptions
+    try:
+        fc_dataframe = pd.DataFrame(np_array, columns=final_fields, index=object_id_index)
+        return fc_dataframe
+    except Exception as e:
+        print(f'Exception: {e}')
+        print(f'{input_fields=}')
+        print(f'{OIDFieldName=}')
+        print(f'{np_array.shape=}')
+        print(f'{final_fields=}')
+        return None
+
