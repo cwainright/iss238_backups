@@ -41,15 +41,15 @@ def _agol_tbl_to_df(in_fc:str, input_fields:list=[], query:str="", skip_nulls:bo
         df = watb._agol_tbl_to_df(in_fc=srcas.WATER_TBL_GRABSAMPLE_URL, query=myqry)
 
     """
-    OIDFieldName = arcpy.Describe(in_fc).OIDFieldName
-    if len(input_fields)>0: # if user specifies which columns they want
-        pass
-    else: # if user does not specify the columns they want, return all of the columns
+    # if user does not specify the columns they want, return all of the columns
+    if len(input_fields)==0:
         exclusions = [
-            'objectid'
+            # 'objectid'
         ]
-        exclusions.extend([x.name for x in arcpy.ListFields(in_fc) if 'entry_other' in x.name])
+        exclusions.extend([x.name for x in arcpy.ListFields(in_fc) if 'entry_other' in x.name]) # fields like 'entry_other_anc_bottle_size' break the arcpy.da.TableToNumPyArray() call for reasons...?
         input_fields = [x.name for x in arcpy.ListFields(in_fc) if x.name not in exclusions]
+    # once we have a list of column names, we need to control for whether the user provided the `OID` (i.e., the table object index), 
+    OIDFieldName = arcpy.Describe(in_fc).OIDFieldName
     if OIDFieldName not in input_fields:
         final_fields = [OIDFieldName] + input_fields
     else:
