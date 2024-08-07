@@ -1,6 +1,7 @@
 import shutil
 import os
 import src.assets as srcas
+import src.water_backup as wtb
 import datetime as dt
 import pandas as pd
 
@@ -40,12 +41,26 @@ print("File {0} has been uploaded successfully".format(uploaded_file.serverRelat
 """
 
 
-def backup_water() -> None:
+def backup_water(dest_dir:str=srcas.DM_VEG_BACKUP_FPATH, verbose:bool=False) -> None:
     """Generic to make backups of NCRN water source files
 
     Returns:
         _type_: _description_
     """
+    assert os.path.exists(dest_dir)==True, print(f'You provided {dest_dir=}, which is a directory that does not exist or is not visible to this computer. Check your filepath.')
+
+    # download a csv of each table, and save each csv (for from-source-data restoration and/or input for ETL)
+    tbls = [
+        srcas.WATER_TBL_MAIN_URL
+        ,srcas.WATER_TBL_GRABSAMPLE_URL
+        ,srcas.WATER_TBL_YSI_URL
+        ,srcas.WATER_TBL_PHOTO_URL
+    ]
+    for tbl in tbls:
+        df = wtb._agol_tbl_to_df(in_fc=tbl)
+
+
+    # download a copy of the hosted feature (for 1:1 restoration)
 
     return None
 
@@ -79,14 +94,9 @@ def backup_veg(src_dir:str=srcas.VEG_T_DRIVE_FPATH, dest_dir:str=srcas.DM_VEG_BA
     assert len(filetypes)>0, print(f'You provided {filetypes=}, which is an empty list. Provide one or more file extensions to copy from `src_dir` to `dest_dir`.')
 
     # extend `dest_dir` with a timestamp and check that that directory does not exist
-    dir_ext = str(dt.datetime.now()).replace(' ','_').replace('.','_').replace(':','')
-    # if dir exists, fail
-    newpath = os.path.join(dest_dir, dir_ext)
-    assert os.path.exists(newpath) == False, print(f'Your target directory {newpath=} already exists and this function is not allowed to overwrite existing data. The newpath is a timestamp so you can just try call the function again.')
-    # if it does not exist, make dir
-    os.makedirs(newpath)
-    if verbose == True:
-        print(f'made dir: {newpath=}')
+    
+    dir_ext:str = str(dt.datetime.now()).replace(' ','_').replace('.','_').replace(':','')
+    newpath:str = _make_new_backup_dir(dest_dir=dest_dir, verbose=verbose, dir_ext=dir_ext)
 
     # copy the source file(s) from the source directory to the target directory
     filetypes = tuple(filetypes)
@@ -144,3 +154,15 @@ def _add_log_entry(log_timestamp:str, src_file:str, log_dest:str, log_result:str
     log.to_csv(log_fpath, index=False)
 
     return None
+
+def _make_new_backup_dir(dest_dir:str, verbose:bool, dir_ext:str) -> str:
+
+    # if dir exists, fail
+    newpath = os.path.join(dest_dir, dir_ext)
+    assert os.path.exists(newpath) == False, print(f'Your target directory {newpath=} already exists and this function is not allowed to overwrite existing data. The newpath is a timestamp so you can just try call the function again.')
+    # if it does not exist, make dir
+    os.makedirs(newpath)
+    if verbose == True:
+        print(f'made dir: {newpath=}')
+
+    return newpath
