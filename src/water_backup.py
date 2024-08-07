@@ -1,10 +1,17 @@
 from arcpy.da import TableToNumPyArray, ExtendTable
+from arcgis.gis import GIS
 import arcpy
 import pandas as pd
 import numpy as np
+import src.assets as srcas
+import os
+import src.utils as utils
+
 # https://github.com/vgrem/Office365-REST-Python-Client/blob/master/examples/sharepoint/files/upload.py
 # https://gist.github.com/d-wasserman/e9c98be1d0caebc2935afecf0ba239a0?permalink_comment_id=3623359
-def _agol_tbl_to_df(in_fc:str, input_fields:list=[], query:str="", skip_nulls:bool=False, null_values=None):
+# https://www.youtube.com/watch?v=yLaIR7lmyqw&t=2089s
+
+def _agol_tbl_to_df(in_fc:str, input_fields:list=[], query:str="", skip_nulls:bool=False, null_values=None) -> pd.DataFrame:
     """Convert an arcgis table into a pandas dataframe with an object ID index, and the selected input fields. Uses TableToNumPyArray to get initial data.
 
     https://gist.github.com/d-wasserman/e9c98be1d0caebc2935afecf0ba239a0?permalink_comment_id=3623359
@@ -78,3 +85,128 @@ def _agol_tbl_to_df(in_fc:str, input_fields:list=[], query:str="", skip_nulls:bo
         print(f'{final_fields=}')
         return None
 
+def _agol_hosted_feature(newpath:str, verbose:bool, dir_ext:str, in_fc:str=srcas.WATER_AGOL_ITEM_ID, download_types:list=['CSV','File Geodatabase']) -> None:
+    """Download a hosted feature layer as one or more filetypes
+
+    Args:
+        newpath (str): relative or absolute filepath to the directory where you want to save the files
+        verbose (bool): Turn on or off messaging.
+        dir_ext (str): The timestamp that becomes the directory name and is included in the log entry
+        in_fc (str, optional): The AGOL item id for the hosted feature layer you want to download. Defaults to srcas.WATER_AGOL_ITEM_ID.
+        download_types (list, optional): A list of strings. Each string is a filetype specified in 
+
+    Returns:
+        None
+
+    """
+    # connect to AGOL
+    # https://www.youtube.com/watch?v=yLaIR7lmyqw&t=2089s
+    try:
+        gis = GIS('home') # update to user/pw 
+        item = gis.content.get(in_fc)
+        log_res:str = 'success'
+        fname:str = f'AGOL connection to {in_fc=}'
+        utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fname, log_result=log_res)
+    except Exception as e:
+        print(f'Failed to connect to AGOL. Are you on the network?')
+        log_res:str = 'fail - unable to connect to AGOL'
+        fname:str = f'AGOL connection to {in_fc=}'
+        utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fname, log_result=log_res)
+
+    fext:dict = {}
+    for t in download_types:
+        fext[t] = ''
+    # fext['CSV'] = '.csv' # note: csvs download as a 'csv collection' which is one .zip folder filled with n csv files
+    fext['File Geodatabase'] = '.fgdb'
+
+    for t in download_types:
+        fname:str = f'ncrn_water_{t.lower().replace(" ","_")}{fext[t]}'
+        ftype:str = t
+        fpath = os.path.join(newpath, fname)
+        try:
+            # makes a copy into your AGOL item as `ftype`, then downloads it, then deletes the item it created
+            item.export(fname, export_format=ftype, wait=True)
+            print(f'{fname=}')
+            print(f'{ftype=}')
+            exported_item_id = gis.content.search(fname, ftype)[0].itemid
+            print(f'{exported_item_id=}')
+            exported_item = gis.content.get(exported_item_id)
+            print('got here')
+            exported_item.download(save_path=newpath)
+            print('got here2')
+            exported_item.delete(force=False, dry_run=False, permanent=False)
+            log_res:str = 'success'
+            print(f'{log_res=}')
+            utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
+        except Exception as e:
+            print(f'Failed to download AGOL content.')
+            log_res:str = f'fail - unable to export {ftype} AGOL item {in_fc=}'
+            utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
+
+    # export as a file geodatabase
+    # fname:str = f'ncrn_water_file_geodatabase'
+    # ftype:str = 'File Geodatabase'
+    # fpath = os.path.join(newpath, fname)
+    # try:
+    #     # makes a copy into your AGOL item as `ftype`, then downloads it, then deletes the item it created
+    #     item.export(fname, export_format=ftype, wait=True)
+    #     exported_item_id = gis.content.search(fname, ftype)[0].itemid
+    #     exported_item = gis.content.get(exported_item_id)
+    #     exported_item.download(save_path=os.path.join(newpath, f'{fname}.gdb'))
+    #     exported_item.delete(force=False, dry_run=False, permanent=False)
+    #     log_res:str = 'success'
+    #     utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
+    # except Exception as e:
+    #     print(f'Failed to download AGOL content.')
+    #     log_res:str = f'fail - unable to export {ftype} AGOL item {in_fc=}'
+    #     utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
+
+    # # as a csv collection
+    # fname:str = f'ncrn_water_csv'
+    # ftype:str = 'CSV'
+    # fpath = os.path.join(newpath, fname)
+    # try:
+    #     # makes a copy into your AGOL item as `ftype`, then downloads it, then deletes the item it created
+    #     item.export(fname, export_format=ftype, wait=True)
+    #     exported_item_id = gis.content.search(fname, ftype)[0].itemid
+    #     exported_item = gis.content.get(exported_item_id)
+    #     exported_item.download(save_path=os.path.join(newpath, f'{fname}.gdb'))
+    #     exported_item.delete(force=False, dry_run=False, permanent=False)
+    #     log_res:str = 'success'
+    #     utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
+    # except Exception as e:
+    #     print(f'Failed to download AGOL content.')
+    #     log_res:str = f'fail - unable to export {ftype} AGOL item {in_fc=}'
+    #     utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
+
+    return None
+
+def _download_csvs(newpath:str, verbose:bool, dir_ext:str) -> None:
+    """Download a csv of each table in a dictionary of table names and AGOL urls
+
+    Args:
+        newpath (str): relative or absolute filepath to the directory where you want to save the files
+        verbose (bool): Turn on or off messaging
+        dir_ext (str): The timestamp that becomes the directory name and is included in the log entry
+
+    Returns:
+        None
+
+    """
+
+    for k,v in srcas.WATER_AGOL_ASSETS.items():
+        df:pd.DataFrame = _agol_tbl_to_df(in_fc=v)
+        fname:str = os.path.join(newpath, k + '.csv')
+        try:
+            df.to_csv(fname, index=False)
+            log_res:str='success'
+            utils._add_log_entry(log_timestamp=dir_ext, src_file=v, log_dest=os.path.join(newpath, fname.rsplit('\\',1)[1]), log_result=log_res)
+            if verbose == True:
+                print(f'Queried tbl {k=} from source...')
+                print(f'Wrote csv: {fname=}')
+        except Exception as e:
+                print(e)
+                log_res = 'fail'
+                utils._add_log_entry(log_timestamp=dir_ext, src_file=v, log_dest=os.path.join(newpath, fname.rsplit('\\',1)[1]), log_result=log_res)
+
+    return None
