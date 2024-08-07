@@ -68,22 +68,10 @@ def backup_water(dest_dir:str=srcas.DM_WATER_BACKUP_FPATH, verbose:bool=False) -
     newpath:str = _make_new_backup_dir(dest_dir=dest_dir, verbose=verbose, dir_ext=dir_ext)
 
     # download a csv of each table, and save each csv (for from-source-data restoration and/or input for ETL)
-    for k,v in srcas.WATER_AGOL_ASSETS.items():
-        df:pd.DataFrame = wtb._agol_tbl_to_df(in_fc=v)
-        fname:str = os.path.join(newpath, k + '.csv')
-        try:
-            df.to_csv(fname, index=False)
-            log_res:str='success'
-            _add_log_entry(log_timestamp=dir_ext, src_file=v, log_dest=os.path.join(newpath, fname.rsplit('\\',1)[1]), log_result=log_res)
-            if verbose == True:
-                print(f'Queried tbl {k=} from source...')
-                print(f'Wrote csv: {fname=}')
-        except Exception as e:
-                print(e)
-                log_res = 'fail'
-                _add_log_entry(log_timestamp=dir_ext, src_file=v, log_dest=os.path.join(newpath, fname.rsplit('\\',1)[1]), log_result=log_res)
+    wtb._download_csvs(newpath=newpath, verbose=verbose, dir_ext=dir_ext)
 
     # download a copy of the hosted feature (for 1:1 restoration)
+    wtb._agol_hosted_feature(newpath=newpath, verbose=verbose, dir_ext=dir_ext)
 
     return None
 
@@ -179,6 +167,16 @@ def _add_log_entry(log_timestamp:str, src_file:str, log_dest:str, log_result:str
     return None
 
 def _make_new_backup_dir(dest_dir:str, verbose:bool, dir_ext:str) -> str:
+    """Make a new directory inside an existing directory
+
+    Args:
+        dest_dir (str): An absolute or relative filepath to a directory; the directory into which you want to create the timestamp `dir_ext` directory.
+        verbose (bool): Turns on or off success/failure messaging
+        dir_ext (str): The name of the directory to create (usually a string timestamp like '2024-08-07_111830_376335')
+
+    Returns:
+        str: The absolute filepath to the directory created by this function
+    """
 
     # if dir exists, fail
     newpath = os.path.join(dest_dir, dir_ext)
