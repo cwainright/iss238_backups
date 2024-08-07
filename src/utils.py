@@ -41,24 +41,47 @@ print("File {0} has been uploaded successfully".format(uploaded_file.serverRelat
 """
 
 
-def backup_water(dest_dir:str=srcas.DM_VEG_BACKUP_FPATH, verbose:bool=False) -> None:
+def backup_water(dest_dir:str=srcas.DM_WATER_BACKUP_FPATH, verbose:bool=False) -> None:
     """Generic to make backups of NCRN water source files
 
+    Args:
+        dest_dir (str, optional): _description_. Defaults to srcas.DM_WATER_BACKUP_FPATH.
+        verbose (bool, optional): _description_. Defaults to False.
+
     Returns:
-        _type_: _description_
+        None
+
+    Examples:
+        import src.utils as utils
+
+        # example 1, copy AGOL assets to local folder called `output/` with interactive feedback `verbose` on.
+        utils.backup_water(dest_dir='output', verbose=True)
+
+        # example 2, copy AGOL assets to authoritative backup location with interactive feedback `verbose` off.
+        utils.backup_water()
+
     """
     assert os.path.exists(dest_dir)==True, print(f'You provided {dest_dir=}, which is a directory that does not exist or is not visible to this computer. Check your filepath.')
 
-    # download a csv of each table, and save each csv (for from-source-data restoration and/or input for ETL)
-    tbls = [
-        srcas.WATER_TBL_MAIN_URL
-        ,srcas.WATER_TBL_GRABSAMPLE_URL
-        ,srcas.WATER_TBL_YSI_URL
-        ,srcas.WATER_TBL_PHOTO_URL
-    ]
-    for tbl in tbls:
-        df = wtb._agol_tbl_to_df(in_fc=tbl)
+    # make new directory to receive backup files
+    dir_ext:str = str(dt.datetime.now()).replace(' ','_').replace('.','_').replace(':','')
+    newpath:str = _make_new_backup_dir(dest_dir=dest_dir, verbose=verbose, dir_ext=dir_ext)
 
+    # download a csv of each table, and save each csv (for from-source-data restoration and/or input for ETL)
+    for k,v in srcas.WATER_AGOL_ASSETS.items():
+        df:pd.DataFrame = wtb._agol_tbl_to_df(in_fc=v)
+        fname:str = os.path.join(newpath, k + '.csv')
+        try:
+            df.to_csv(fname, index=False)
+            log_res:str='success'
+            _add_log_entry(log_timestamp=dir_ext, src_file=v, log_dest=os.path.join(newpath, fname.rsplit('\\',1)[1]), log_result=log_res)
+            if verbose == True:
+                print(f'Queried tbl {k=} from source...')
+                print(f'Wrote csv: {fname=}')
+        except Exception as e:
+                print(e)
+                log_res = 'fail'
+                _add_log_entry(log_timestamp=dir_ext, src_file=v, log_dest=os.path.join(newpath, fname.rsplit('\\',1)[1]), log_result=log_res)
 
     # download a copy of the hosted feature (for 1:1 restoration)
 
@@ -107,17 +130,17 @@ def backup_veg(src_dir:str=srcas.VEG_T_DRIVE_FPATH, dest_dir:str=srcas.DM_VEG_BA
             source_files.append(os.path.join(src_dir, file))
     # print(source_files)
     if len(source_files) > 0:
-        for f in source_files:
+        for fname in source_files:
             try:
-                shutil.copy2(f, newpath)
+                shutil.copy2(fname, newpath)
                 log_res = 'success'
-                _add_log_entry(log_timestamp=dir_ext, src_file=f, log_dest=os.path.join(newpath, f.rsplit('\\',1)[1]), log_result=log_res)
+                _add_log_entry(log_timestamp=dir_ext, src_file=fname, log_dest=os.path.join(newpath, fname.rsplit('\\',1)[1]), log_result=log_res)
                 if verbose == True:
-                    print(f'copied {f} to {newpath}')
+                    print(f'copied {fname} to {newpath}')
             except Exception as e:
                 print(e)
                 log_res = 'fail'
-                _add_log_entry(log_timestamp=dir_ext, src_file=f, log_dest=os.path.join(newpath, f.rsplit('\\',1)[1]), log_result=log_res)
+                _add_log_entry(log_timestamp=dir_ext, src_file=fname, log_dest=os.path.join(newpath, fname.rsplit('\\',1)[1]), log_result=log_res)
     else:
         if verbose == True:
             print(f'No files of type {filetypes=} found in {src_dir=}. No files backed up.')
