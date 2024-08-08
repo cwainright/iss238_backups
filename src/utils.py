@@ -80,7 +80,12 @@ def backup_water(dest_dir:str=srcas.DM_WATER_BACKUP_FPATH, verbose:bool=False, t
 
     # copy the survey source-files
     for d in srcas.SURVEY_SOURCE_DIRS:
-        _backup_make_file_copies(src_dir=d, dest_dir=dest_dir, filetypes=['*'], verbose=verbose)
+        try:
+            _backup_make_file_copies(src_dir=d, dest_dir=dest_dir, filetypes=['*'], verbose=verbose)
+        except:
+            _add_log_entry(log_timestamp=dir_ext, src_file=d, log_dest=newpath, log_result='fail - unable to copy file')
+            if verbose == True:
+                print(f'Unable to copy directory {d=}. Files not backed up.')
 
     return None
 
@@ -177,11 +182,15 @@ def _backup_make_file_copies(src_dir:str, dest_dir:str, filetypes:list, verbose:
     newpath:str = _make_new_backup_dir(dest_dir=dest_dir, verbose=verbose, dir_ext=dir_ext)
 
     # copy the source file(s) from the source directory to the target directory
-    filetypes = tuple(filetypes)
+    filetypes = list(set(filetypes))
     source_files = []
-    for file in os.listdir(src_dir):
-        if file.endswith(filetypes):
-            # print(os.path.join(src_dir, file))
+    if filetypes != ['*']:
+        for file in os.listdir(src_dir):
+            if file.endswith(filetypes):
+                # print(os.path.join(src_dir, file))
+                source_files.append(os.path.join(src_dir, file))
+    else:
+        for file in os.listdir(src_dir):
             source_files.append(os.path.join(src_dir, file))
     # print(source_files)
     if len(source_files) > 0:
