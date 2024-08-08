@@ -66,26 +66,33 @@ def backup_water(dest_dir:str=srcas.DM_WATER_BACKUP_FPATH, verbose:bool=False, t
 
     # make new directory to receive backup files
     dir_ext:str = str(dt.datetime.now()).replace(' ','_').replace('.','_').replace(':','')
-    newpath:str = _make_new_backup_dir(dest_dir=dest_dir, verbose=verbose, dir_ext=dir_ext)
+    newpath:str = os.path.join(dest_dir, dir_ext)
+    
 
     # download a csv of each table, and save each csv (for from-source-data restoration and/or input for ETL)
     # wtb._download_csvs(newpath=newpath, verbose=verbose, dir_ext=dir_ext)
+
+    # copy the survey source-files
+    if test_run==True:
+        dirs=srcas.SURVEY_DEV_DIRS
+    else:
+        dirs=srcas.SURVEY_SOURCE_DIRS
+    for d in dirs:
+        try:
+            # _backup_make_file_copies(src_dir=d, dest_dir=dest_dir, filetypes=['*'], verbose=verbose)
+            _backup_make_file_copies(dir_ext=dir_ext, newpath=newpath, src_dir=d, filetypes=['*'], verbose=verbose)
+        except:
+            _add_log_entry(log_timestamp=dir_ext, src_file=d, log_dest=newpath, log_result='fail - unable to copy file')
+            if verbose == True:
+                print(f'Unable to copy directory {d=}. Files not backed up.')
 
     # download a copy of the hosted feature (for 1:1 restoration)
     if test_run==True:
         src = srcas.WATER_DEV_ITEM_ID
     else:
         src = srcas.WATER_AGOL_ITEM_ID
+    # newpath:str = _make_new_backup_dir(dest_dir=dest_dir, verbose=verbose, dir_ext=dir_ext)
     wtb._agol_hosted_feature(newpath=newpath, in_fc=src, verbose=verbose, dir_ext=dir_ext)
-
-    # copy the survey source-files
-    for d in srcas.SURVEY_SOURCE_DIRS:
-        try:
-            _backup_make_file_copies(src_dir=d, dest_dir=dest_dir, filetypes=['*'], verbose=verbose)
-        except:
-            _add_log_entry(log_timestamp=dir_ext, src_file=d, log_dest=newpath, log_result='fail - unable to copy file')
-            if verbose == True:
-                print(f'Unable to copy directory {d=}. Files not backed up.')
 
     return None
 
@@ -106,7 +113,7 @@ def backup_veg(src_dir:str=srcas.VEG_T_DRIVE_FPATH, dest_dir:str=srcas.DM_VEG_BA
 
         # example 1, copy a local db (data/*.accdb) to a local backup directory (output/)
 
-        utils.backup_veg(src_dir='data', dest_dir='output)
+        utils.backup_veg(src_dir='data', dest_dir='output')
 
         # example 2, copy the T-drive (authoritative as of 2024-08-01) db to a network backup directory
 
@@ -118,7 +125,10 @@ def backup_veg(src_dir:str=srcas.VEG_T_DRIVE_FPATH, dest_dir:str=srcas.DM_VEG_BA
     assert os.path.exists(dest_dir)==True, print(f'You provided {dest_dir=}, which is a directory that does not exist or is not visible to this computer. Check your filepath.')
     assert len(filetypes)>0, print(f'You provided {filetypes=}, which is an empty list. Provide one or more file extensions to copy from `src_dir` to `dest_dir`.')
 
-    _backup_make_file_copies(src_dir=src_dir, dest_dir=dest_dir, filetypes=filetypes, verbose=verbose)
+    # extend `dest_dir` with a timestamp and check that that directory does not exist
+    dir_ext:str = str(dt.datetime.now()).replace(' ','_').replace('.','_').replace(':','')
+    newpath:str = _make_new_backup_dir(dest_dir=dest_dir, verbose=verbose, dir_ext=dir_ext)
+    _backup_make_file_copies(dir_ext=dir_ext, newpath=newpath, src_dir=src_dir, filetypes=filetypes, verbose=verbose)
 
     return None
 
@@ -175,39 +185,40 @@ def _make_new_backup_dir(dest_dir:str, verbose:bool, dir_ext:str) -> str:
 
     return newpath
 
-def _backup_make_file_copies(src_dir:str, dest_dir:str, filetypes:list, verbose:bool) -> None:
-
-    # extend `dest_dir` with a timestamp and check that that directory does not exist
-    dir_ext:str = str(dt.datetime.now()).replace(' ','_').replace('.','_').replace(':','')
-    newpath:str = _make_new_backup_dir(dest_dir=dest_dir, verbose=verbose, dir_ext=dir_ext)
+def _backup_make_file_copies(dir_ext:str, newpath:str, src_dir:str, filetypes:list, verbose:bool) -> None:
 
     # copy the source file(s) from the source directory to the target directory
-    filetypes = list(set(filetypes))
+    filetypes = tuple(set(filetypes))
     source_files = []
-    if filetypes != ['*']:
+    if filetypes == ('*',):
+        shutil.copytree(src_dir, newpath)
+        log_res = 'success'
+        for d in os.listdir(src_dir):
+            _add_log_entry(log_timestamp=dir_ext, src_file=src_dir, log_dest=os.path.join(newpath, d), log_result=log_res)
+            if verbose == True:
+                print(f'copied {d} to {newpath}')
+    else:
         for file in os.listdir(src_dir):
             if file.endswith(filetypes):
                 # print(os.path.join(src_dir, file))
                 source_files.append(os.path.join(src_dir, file))
-    else:
-        for file in os.listdir(src_dir):
-            source_files.append(os.path.join(src_dir, file))
-    # print(source_files)
-    if len(source_files) > 0:
-        for fname in source_files:
-            try:
-                shutil.copy2(fname, newpath)
-                log_res = 'success'
-                _add_log_entry(log_timestamp=dir_ext, src_file=fname, log_dest=os.path.join(newpath, fname.rsplit('\\',1)[1]), log_result=log_res)
-                if verbose == True:
-                    print(f'copied {fname} to {newpath}')
-            except Exception as e:
-                print(e)
-                log_res = 'fail'
-                _add_log_entry(log_timestamp=dir_ext, src_file=fname, log_dest=os.path.join(newpath, fname.rsplit('\\',1)[1]), log_result=log_res)
-    else:
-        if verbose == True:
-            print(f'No files of type {filetypes=} found in {src_dir=}. No files backed up.')
-        _add_log_entry(log_timestamp=dir_ext, src_file=None, log_dest=newpath, log_result='no_files')
+        # print(source_files)
+        if len(source_files) > 0:
+            for f in source_files:
+                try:
+                    shutil.copy2(f, newpath)
+                    log_res = 'success'
+                    _add_log_entry(log_timestamp=dir_ext, src_file=f, log_dest=os.path.join(newpath, f.rsplit('\\',1)[1]), log_result=log_res)
+                    if verbose == True:
+                        print(f'copied {f} to {newpath}')
+                except Exception as e:
+                    print(e)
+                    log_res = 'fail'
+                    _add_log_entry(log_timestamp=dir_ext, src_file=f, log_dest=os.path.join(newpath, f.rsplit('\\',1)[1]), log_result=log_res)
+        else:
+            if verbose == True:
+                print(f'No files of type {filetypes=} found in {src_dir=}. No files backed up.')
+            _add_log_entry(log_timestamp=dir_ext, src_file=None, log_dest=newpath, log_result='no_files')
 
     return None
+    

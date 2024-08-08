@@ -123,7 +123,7 @@ def _agol_hosted_feature(newpath:str, verbose:bool, dir_ext:str, in_fc:str=srcas
             exported_item = gis.content.search(fname, ftype)
             exported_item_obj = gis.content.get(exported_item[0].itemid)
             exported_item_obj.download(save_path=newpath)
-            if exported_item_obj.title == fname and exported_item_obj.title != item.title and exported_item[0].itemid != in_fc and exported_item_obj.itemid != in_fc: # nuke prod make dev sad...
+            if exported_item_obj.title != item.title and exported_item[0].itemid != in_fc and exported_item_obj.itemid != in_fc: # nuke prod make dev sad...
                 exported_item_obj.delete(dry_run=False)
                 log_res:str = 'success'
                 utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
