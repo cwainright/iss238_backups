@@ -93,6 +93,10 @@ def backup_water(dest_dir:str=srcas.DM_WATER_BACKUP_FPATH, verbose:bool=False, t
         src = srcas.WATER_AGOL_ITEM_ID
     # newpath:str = _make_new_backup_dir(dest_dir=dest_dir, verbose=verbose, dir_ext=dir_ext)
     wtb._agol_hosted_feature(newpath=newpath, in_fc=src, verbose=verbose, dir_ext=dir_ext)
+    
+    # TODO: take the latest verified records, replace their counterparts in the wqx for dan et al
+    # _update_authoritative_dataset()
+    # _update_dashboard_dataset()
 
     return None
 
@@ -221,4 +225,10 @@ def _backup_make_file_copies(dir_ext:str, newpath:str, src_dir:str, filetypes:li
             _add_log_entry(log_timestamp=dir_ext, src_file=None, log_dest=newpath, log_result='no_files')
 
     return None
-    
+
+def _update_authoritative_dataset():
+    # take the existing WQX dataset, replace records in WQX with their verified dataset from agol
+    # df_agol = _agol_to_wqx()
+    # df_wqx = pd.read_csv(some source file)
+    # _replace_wqx_with_agol() # 
+    return None
