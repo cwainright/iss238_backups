@@ -68,7 +68,7 @@ def backup_water(dest_dir:str=srcas.DM_WATER_BACKUP_FPATH, verbose:bool=False) -
     newpath:str = _make_new_backup_dir(dest_dir=dest_dir, verbose=verbose, dir_ext=dir_ext)
 
     # download a csv of each table, and save each csv (for from-source-data restoration and/or input for ETL)
-    wtb._download_csvs(newpath=newpath, verbose=verbose, dir_ext=dir_ext)
+    # wtb._download_csvs(newpath=newpath, verbose=verbose, dir_ext=dir_ext)
 
     # download a copy of the hosted feature (for 1:1 restoration)
     wtb._agol_hosted_feature(newpath=newpath, verbose=verbose, dir_ext=dir_ext)
