@@ -127,6 +127,8 @@ def _agol_hosted_feature(newpath:str, verbose:bool, dir_ext:str, in_fc:str=srcas
                 exported_item_obj.delete(dry_run=False)
                 log_res:str = 'success'
                 utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
+                if verbose == True:
+                    print(f'Saved asset {fpath}')
         except Exception as e:
             print(f'Failed to download AGOL content.')
             log_res:str = f'fail - unable to export {ftype} AGOL item {in_fc=}'
