@@ -113,71 +113,24 @@ def _agol_hosted_feature(newpath:str, verbose:bool, dir_ext:str, in_fc:str=srcas
         fname:str = f'AGOL connection to {in_fc=}'
         utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fname, log_result=log_res)
 
-    fext:dict = {}
     for t in download_types:
-        fext[t] = ''
-    # fext['CSV'] = '.csv' # note: csvs download as a 'csv collection' which is one .zip folder filled with n csv files
-    fext['File Geodatabase'] = '.fgdb'
-
-    for t in download_types:
-        fname:str = f'ncrn_water_{t.lower().replace(" ","_")}{fext[t]}'
+        fname:str = f'ncrn_water_{t.lower().replace(" ","_")}_{dir_ext}'
         ftype:str = t
-        fpath = os.path.join(newpath, fname)
+        fpath:str = os.path.join(newpath,fname)
         try:
             # makes a copy into your AGOL item as `ftype`, then downloads it, then deletes the item it created
-            item.export(fname, export_format=ftype, wait=True)
-            print(f'{fname=}')
-            print(f'{ftype=}')
-            exported_item_id = gis.content.search(fname, ftype)[0].itemid
-            print(f'{exported_item_id=}')
-            exported_item = gis.content.get(exported_item_id)
-            print('got here')
-            exported_item.download(save_path=newpath)
-            print('got here2')
-            exported_item.delete(force=False, dry_run=False, permanent=False)
-            log_res:str = 'success'
-            print(f'{log_res=}')
-            utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
+            item.export(fname, export_format=ftype, parameters=None, wait=True)
+            exported_item = gis.content.search(fname, ftype)
+            exported_item_obj = gis.content.get(exported_item[0].itemid)
+            exported_item_obj.download(save_path=newpath)
+            if exported_item_obj.title == fname and exported_item_obj.title != item.title and exported_item[0].itemid != in_fc and exported_item_obj.itemid != in_fc: # nuke prod make dev sad...
+                exported_item_obj.delete(dry_run=False)
+                log_res:str = 'success'
+                utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
         except Exception as e:
             print(f'Failed to download AGOL content.')
             log_res:str = f'fail - unable to export {ftype} AGOL item {in_fc=}'
             utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
-
-    # export as a file geodatabase
-    # fname:str = f'ncrn_water_file_geodatabase'
-    # ftype:str = 'File Geodatabase'
-    # fpath = os.path.join(newpath, fname)
-    # try:
-    #     # makes a copy into your AGOL item as `ftype`, then downloads it, then deletes the item it created
-    #     item.export(fname, export_format=ftype, wait=True)
-    #     exported_item_id = gis.content.search(fname, ftype)[0].itemid
-    #     exported_item = gis.content.get(exported_item_id)
-    #     exported_item.download(save_path=os.path.join(newpath, f'{fname}.gdb'))
-    #     exported_item.delete(force=False, dry_run=False, permanent=False)
-    #     log_res:str = 'success'
-    #     utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
-    # except Exception as e:
-    #     print(f'Failed to download AGOL content.')
-    #     log_res:str = f'fail - unable to export {ftype} AGOL item {in_fc=}'
-    #     utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
-
-    # # as a csv collection
-    # fname:str = f'ncrn_water_csv'
-    # ftype:str = 'CSV'
-    # fpath = os.path.join(newpath, fname)
-    # try:
-    #     # makes a copy into your AGOL item as `ftype`, then downloads it, then deletes the item it created
-    #     item.export(fname, export_format=ftype, wait=True)
-    #     exported_item_id = gis.content.search(fname, ftype)[0].itemid
-    #     exported_item = gis.content.get(exported_item_id)
-    #     exported_item.download(save_path=os.path.join(newpath, f'{fname}.gdb'))
-    #     exported_item.delete(force=False, dry_run=False, permanent=False)
-    #     log_res:str = 'success'
-    #     utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
-    # except Exception as e:
-    #     print(f'Failed to download AGOL content.')
-    #     log_res:str = f'fail - unable to export {ftype} AGOL item {in_fc=}'
-    #     utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fpath, log_result=log_res)
 
     return None
 
