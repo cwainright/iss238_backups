@@ -41,12 +41,13 @@ print("File {0} has been uploaded successfully".format(uploaded_file.serverRelat
 """
 
 
-def backup_water(dest_dir:str=srcas.DM_WATER_BACKUP_FPATH, verbose:bool=False) -> None:
+def backup_water(dest_dir:str=srcas.DM_WATER_BACKUP_FPATH, verbose:bool=False, test_run:bool=False) -> None:
     """Generic to make backups of NCRN water source files
 
     Args:
         dest_dir (str, optional): _description_. Defaults to srcas.DM_WATER_BACKUP_FPATH.
-        verbose (bool, optional): _description_. Defaults to False.
+        verbose (bool, optional): True turns on interactive messaging. Defaults to False.
+        test_run (bool, optional): True points to development source files, False points to production. Defaults to False.
 
     Returns:
         None
@@ -71,7 +72,11 @@ def backup_water(dest_dir:str=srcas.DM_WATER_BACKUP_FPATH, verbose:bool=False) -
     # wtb._download_csvs(newpath=newpath, verbose=verbose, dir_ext=dir_ext)
 
     # download a copy of the hosted feature (for 1:1 restoration)
-    wtb._agol_hosted_feature(newpath=newpath, verbose=verbose, dir_ext=dir_ext)
+    if test_run==True:
+        src = srcas.WATER_DEV_ITEM_ID
+    else:
+        src = srcas.WATER_AGOL_ITEM_ID
+    wtb._agol_hosted_feature(newpath=newpath, in_fc=src, verbose=verbose, dir_ext=dir_ext)
 
     return None
 
