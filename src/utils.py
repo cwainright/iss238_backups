@@ -237,6 +237,12 @@ def _update_authoritative_dataset():
 def dashboard_etl(dest_dir:str='', test_run:bool=False, load:bool=False, include_deletes:bool=False) -> pd.DataFrame:
     """Extract-transform-load pipeline that transforms relational NCRN discrete water data into one flat csv and optionally overwrites the feature service underlying the dashboard with the csv
 
+    This pipeline finds the newest version of the data in a folder, extracts the newest data, transforms the data into the format for the backend of the QC dashboard.
+    If `load` == True, the pipeline will overwrite the data in the feature service.
+    If `dest_dir` != '', the pipeline will save the output into the folder specified.
+    If `test_run` == True, the pipeline extracts data from a development asset; otherwise, the pipeline extracts data from the production asset.
+    `include_deletes` applies cascade-deletes based on user-side fields (e.g., tbl_main.delete_record or tbl_ysi.delete_increment)
+
     Args:
         dest_dir (str, optional): relative or absolute filepath to a folder where you want to save the output file. Defaults to ''. If blank, will not write.
         test_run (bool, optional): True points `etl()` at development assets. False points `etl()` at production assets. Defaults to False.
@@ -253,6 +259,8 @@ def dashboard_etl(dest_dir:str='', test_run:bool=False, load:bool=False, include
 
         bu.dashboard_etl(data_folder=fpath, include_deletes=True)
     """
+    if dest_dir != '':
+        assert os.isdir(dest_dir), print(f'You provided {dest_dir=}. `dest_dir` must be an existing folder. `dashboard_etl()` will create a timestamped folder inside `dest_dir` and then save your csv there. Try again.')
     if test_run == True:
         data_folder = assets.WATER_DEV_DATA_FPATH
         target_itemid = assets.WATER_DEV_QC_DASHBOARD_BACKEND # TODO: update this to an itemid
@@ -293,6 +301,8 @@ def _extract(data_folder:str) -> dict:
     # find the newest folder in a given folder
     # use the filenames to find the newest timestamp
     dirs = [x for x in os.listdir(data_folder) if os.path.isdir(os.path.join(data_folder,x))]
+    newest_data_folder = os.path.join(data_folder, max(dirs))
+    assert os.path.isdir(newest_data_folder), print(f'data folder {newest_data_folder=} does not exist')
 
     # look at the contents of that newest folder and find a .zip file with 'csv' in the filename
     # what happens if there are two?!?! Or zero?!?!
