@@ -305,14 +305,22 @@ def _extract(data_folder:str) -> dict:
     assert os.path.isdir(newest_data_folder), print(f'data folder {newest_data_folder=} does not exist')
 
     # look at the contents of that newest folder and find a .zip file with 'csv' in the filename
-    # what happens if there are two?!?! Or zero?!?!
-    # unzip the file
+    targets = os.listdir(newest_data_folder)
+    targets = [x for x in targets if x.endswith('.zip') and 'csv' in x]
+    assert len(targets) > 0, print(f'Returned zero csv collections in {data_folder=}')
+    target = os.path.join(newest_data_folder, max(targets))
+
+    # unzip the files
+    newdir = target.rsplit('.zip',1)[0].rsplit('\\',1)[-1]
+    shutil.unpack_archive(target, os.path.join(newest_data_folder, newdir))
 
     # extract each table
+    extracted_dir = os.path.join(newest_data_folder, newdir)
+    tbls = os.listdir(extracted_dir)
+    tbls = [os.path.join(extracted_dir, x) for x in tbls if '_0' in x or 'ysi' in x or 'grabsample' in x]
     df_dict:dict = {}
-    for tbl in assets.TBLS:
-        tbl_filepath = f"{data_folder}\{tbl}.csv"
-        df = pd.read_csv(tbl_filepath)
+    for tbl in tbls:
+        df = pd.read_csv(tbl)
         df_dict[tbl] = df
 
     return df_dict

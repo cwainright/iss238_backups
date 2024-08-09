@@ -61,4 +61,4 @@ utils.backup_water(dest_dir='output', verbose=True, test_run=True)
 # utils.backup_veg()
 
 # test: make the dashboard backend format
-df = utils.etl(data_folder=r'output\2024-08-08_134545_038366')
+df = utils.dashboard_etl(data_folder=r'output\2024-08-08_134545_038366')
