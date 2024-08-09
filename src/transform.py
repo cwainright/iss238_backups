@@ -38,7 +38,7 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     return df
 
 def _calc_week_of_year(df:pd.DataFrame) -> pd.DataFrame:
-    df['week_of_year'] = pd.to_datetime(df['review_date']).dt.isocalendar().week
+    df['week_of_year'] = pd.to_datetime(df['activity_start_date']).dt.isocalendar().week
     return df
 
 def _transform_site_visits(tbl:pd.DataFrame, include_deletes:bool) -> pd.DataFrame:
