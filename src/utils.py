@@ -96,8 +96,8 @@ def backup_water(dest_dir:str=assets.DM_WATER_BACKUP_FPATH, verbose:bool=False, 
     wtb._agol_hosted_feature(newpath=newpath, in_fc=src, verbose=verbose, dir_ext=dir_ext)
     
     # TODO: take the latest verified records, replace their counterparts in the wqx for dan et al
-    # _update_authoritative_dataset()
-    # _update_dashboard_dataset()
+    # wqp_wqx()
+    # dashboard_etl()
 
     return None
 
@@ -227,19 +227,11 @@ def _backup_make_file_copies(dir_ext:str, newpath:str, src_dir:str, filetypes:li
 
     return None
 
-def _update_authoritative_dataset():
-    # take the existing WQX dataset, replace records in WQX with their verified dataset from agol
-    # df_agol = _agol_to_wqx()
-    # df_wqx = pd.read_csv(some source file)
-    # _replace_wqx_with_agol() # 
-    return None
-
-def dashboard_etl(dest_dir:str='', test_run:bool=False, load:bool=False, include_deletes:bool=False) -> pd.DataFrame:
+def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=False) -> pd.DataFrame:
     """Extract-transform-load pipeline that transforms relational NCRN discrete water data into one flat csv and optionally overwrites the feature service underlying the dashboard with the csv
 
     This pipeline finds the newest version of the data in a folder, extracts the newest data, transforms the data into the format for the backend of the QC dashboard.
     If `load` == True, the pipeline will overwrite the data in the feature service.
-    If `dest_dir` != '', the pipeline will save the output into the folder specified.
     If `test_run` == True, the pipeline extracts data from a development asset; otherwise, the pipeline extracts data from the production asset.
     `include_deletes` applies cascade-deletes based on user-side fields (e.g., tbl_main.delete_record or tbl_ysi.delete_increment)
 
@@ -259,14 +251,10 @@ def dashboard_etl(dest_dir:str='', test_run:bool=False, load:bool=False, include
 
         bu.dashboard_etl(data_folder=fpath, include_deletes=True)
     """
-    if dest_dir != '':
-        assert os.isdir(dest_dir), print(f'You provided {dest_dir=}. `dest_dir` must be an existing folder. `dashboard_etl()` will create a timestamped folder inside `dest_dir` and then save your csv there. Try again.')
     if test_run == True:
         data_folder = assets.WATER_DEV_DATA_FPATH
-        target_itemid = assets.WATER_DEV_QC_DASHBOARD_BACKEND # TODO: update this to an itemid
     else:
         data_folder = assets.DM_WATER_BACKUP_FPATH
-        target_itemid = assets.WATER_PROD_QC_DASHBOARD_BACKEND
 
     # Extract steps
     df_dict:dict = _extract(data_folder)
@@ -275,19 +263,43 @@ def dashboard_etl(dest_dir:str='', test_run:bool=False, load:bool=False, include
     df:pd.DataFrame = tf._transform(df_dict=df_dict, include_deletes=include_deletes)
     
     # QC checks
-    tf._quality_control(df)
+    if verbose == True:
+        tf._quality_control(df)
 
-    # TODO:
-    # if load == True:
-    #     _load_feature(df, target_itemid)
+    if test_run == True:
+        print('df returned')
+        return df
+    else:
+        # TODO:
+        # fname = wtb._save_dashboard_csv(df, data_folder, verbose)
+        # wtb._load_feature(fname, assets.WATER_PROD_QC_DASHBOARD_BACKEND, verbose)
+        print('df returned')
+        return df
 
-    return df
+def wqp_wqx(test_run:bool=False, include_deletes:bool=False, verbose:bool=False) -> pd.DataFrame:
+    if test_run == True:
+        data_folder = assets.WATER_DEV_DATA_FPATH
+    else:
+        data_folder = assets.DM_WATER_BACKUP_FPATH
 
-def wqp_wqx(data_folder:str, include_deletes:bool=False) -> pd.DataFrame:
     # TODO: crosswalk the etl output into wqxwqp-output format
-    df = pd.DataFrame()
+    df_dict:dict = _extract(data_folder)
+    df:pd.DataFrame = tf._transform(df_dict=df_dict, include_deletes=include_deletes)
+    if verbose == True:
+        tf._quality_control(df)
 
-    return df
+    # read in the existing authoritiative wqp dataset
+    # update existing data
+    # if there's a verified record in `df`, replace the site visit 
+    wqp = wtb._update_authoritative_dataset(df)
+
+    if test_run == True:
+        print('df returned')
+        return wqp
+    else:
+        # TODO:
+        return True
+
 
 def _extract(data_folder:str) -> dict:
     """Call-stacking function for extract steps
@@ -328,9 +340,3 @@ def _extract(data_folder:str) -> dict:
     df_dict:dict = {tbls_fnames[i]: {'fpath':tbls_fpaths[i], 'df':pd.read_csv(tbls_fpaths[i])} for i in range(len(tbls_fnames))}
 
     return df_dict
-
-def _load_feature(df:pd.DataFrame, target_itemid:str) -> bool:
-
-    outcome = True
-
-    return outcome
