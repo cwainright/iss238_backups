@@ -59,3 +59,6 @@ utils.backup_water(dest_dir='output', verbose=True, test_run=True)
 
 # # test: make copies of each veg db file to authoritative folder
 # utils.backup_veg()
+
+# test: make the dashboard backend format
+df = utils.etl(data_folder=r'output\2024-08-08_134545_038366')

@@ -3,7 +3,7 @@ from arcgis.gis import GIS
 import arcpy
 import pandas as pd
 import numpy as np
-import src.assets as srcas
+import src.assets as assets
 import os
 import src.utils as utils
 
@@ -29,23 +29,23 @@ def _agol_tbl_to_df(in_fc:str, input_fields:list=[], query:str="", skip_nulls:bo
     Examples:
         import src.water_backup as watb
         
-        import src.assets as srcas
+        import src.assets as assets
         
         # example 1, returns all fields, all rows
 
-        df = watb._agol_tbl_to_df(in_fc=srcas.WATER_TBL_GRABSAMPLE_URL)
+        df = watb._agol_tbl_to_df(in_fc=assets.WATER_TBL_GRABSAMPLE_URL)
 
         # example 2, returns fields specified in `mycols` and all rows
 
         mycols = ['globalid', 'parentglobalid', 'anc', 'tn', 'tp', 'lab', 'delete_grabsample']
 
-        df = watb._agol_tbl_to_df(in_fc=srcas.WATER_TBL_GRABSAMPLE_URL, input_fields=mycols)
+        df = watb._agol_tbl_to_df(in_fc=assets.WATER_TBL_GRABSAMPLE_URL, input_fields=mycols)
         
         # example 3, returns fields specified in `mycols` and rows matching criteria in `myqry`
 
         myqry = "delete_grabsample = 'no' or delete_grabsample IS NULL" # note single quotes and double-quotes
 
-        df = watb._agol_tbl_to_df(in_fc=srcas.WATER_TBL_GRABSAMPLE_URL, input_fields=mycols, query=myqry)
+        df = watb._agol_tbl_to_df(in_fc=assets.WATER_TBL_GRABSAMPLE_URL, input_fields=mycols, query=myqry)
 
         # example 4, query each table from the hosted feature
 
@@ -85,14 +85,14 @@ def _agol_tbl_to_df(in_fc:str, input_fields:list=[], query:str="", skip_nulls:bo
         print(f'{final_fields=}')
         return None
 
-def _agol_hosted_feature(newpath:str, verbose:bool, dir_ext:str, in_fc:str=srcas.WATER_AGOL_ITEM_ID, download_types:list=['CSV','File Geodatabase']) -> None:
+def _agol_hosted_feature(newpath:str, verbose:bool, dir_ext:str, in_fc:str=assets.WATER_AGOL_ITEM_ID, download_types:list=['CSV','File Geodatabase']) -> None:
     """Download a hosted feature layer as one or more filetypes
 
     Args:
         newpath (str): relative or absolute filepath to the directory where you want to save the files
         verbose (bool): Turn on or off messaging.
         dir_ext (str): The timestamp that becomes the directory name and is included in the log entry
-        in_fc (str, optional): The AGOL item id for the hosted feature layer you want to download. Defaults to srcas.WATER_AGOL_ITEM_ID.
+        in_fc (str, optional): The AGOL item id for the hosted feature layer you want to download. Defaults to assets.WATER_AGOL_ITEM_ID.
         download_types (list, optional): A list of strings. Each string is a filetype specified in 
 
     Returns:
@@ -149,7 +149,7 @@ def _download_csvs(newpath:str, verbose:bool, dir_ext:str) -> None:
 
     """
 
-    for k,v in srcas.WATER_AGOL_ASSETS.items():
+    for k,v in assets.WATER_AGOL_ASSETS.items():
         df:pd.DataFrame = _agol_tbl_to_df(in_fc=v)
         fname:str = os.path.join(newpath, k + '.csv')
         try:
