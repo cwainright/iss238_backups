@@ -454,3 +454,69 @@ def _cast_result_by_type(tfl_tbl:pd.DataFrame) -> pd.DataFrame:
 
     return tfl_tbl
 
+def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
+    """Enforce business logic to quality-control the output of the pipeline"""
+
+    nullables = [# columns that are nullable for all rows
+        'paper_url1' # should be present for most records before 2018, but field will be blank until user reviews the record (reviewing the record triggers the logic that populates the field from the lookup table)
+        ,'paper_url2' # will be NA for nearly all rows
+        ,'analytical_method_id'
+        ,'method_detection_limit' # 
+        ,'review_notes'
+    ]
+    non_nullables = [x for x in df.columns if x not in nullables]
+    for c in non_nullables:
+        if df[c].isna().all():
+            print("")
+            print(f'WARNING (a): non-nullable field `{c}` is null in all rows')
+            print("")
+
+
+    # business rule-checking logic
+    # if `review_status` IN ['verified', 'in_review'], the following fields are non-nullable
+
+    statuses = ['verified', 'in_review']
+    non_nullables = [
+            'record_reviewers'
+            ,'review_date'
+            ,'review_time'
+            ,'entry_review_date'
+            ,'entry_review_time'
+            ,'field_crew'
+            ,'sampleability'
+            ,'delete_record'
+            ,'survey_complete'
+            ,'form_version'
+            ,'project_id'
+            ,'skip_req_observations'
+            ,'skip_req_ysi'
+            ,'skip_req_flowtracker'
+            ,'skip_req_grabsample'
+            ,'skip_req_photo'
+            ]
+
+    for c in non_nullables:
+        mask = (df['review_status'].isin(statuses)) & (df[c].isna()) & (df['delete_record'].isna()==False) & (df['delete_record']!='yes')
+        if len(df[mask]) >0:
+                print("")
+                print(f'WARNING (b): non-nullable field `{c}` is null in {round(((len(df[mask]))/len(df)*100),2)}% of rows')
+                print("")
+
+
+    # # if `data_type` == 'float', the following fields are non-nullable
+    #     [
+    #         'Result_Unit'
+    #     ]
+    non_nullables = ['Result_Unit']
+    for c in non_nullables:
+        mask = (df['data_type']=='float') & (df[c].isna())
+        if len(df[mask]) > 0:
+                print("")
+                print(f'WARNING (c): non-nullable field `{c}` is null in {round(((len(df[mask]))/len(df)*100),2)}% of rows')
+                print("")
+
+    # check for duplicate `activity_group_id`s for each `SiteVisitParentGlobalID`
+    # TODO
+
+    return df
+    

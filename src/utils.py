@@ -234,14 +234,13 @@ def _update_authoritative_dataset():
     # _replace_wqx_with_agol() # 
     return None
 
-
-def etl(data_folder:str, load:bool=False, feature_url:str='', include_deletes:bool=False) -> pd.DataFrame:
-    """Extract-transform-load pipeline for ncrn discrete water data
+def dashboard_etl(dest_dir:str='', test_run:bool=False, load:bool=False, include_deletes:bool=False) -> pd.DataFrame:
+    """Extract-transform-load pipeline that transforms relational NCRN discrete water data into one flat csv and optionally overwrites the feature service underlying the dashboard with the csv
 
     Args:
-        data_folder (str): absolute or relative filepath to a folder containing the csv outputs from feature `ncrn_discrete_water_reviewer_20240112`
+        dest_dir (str, optional): relative or absolute filepath to a folder where you want to save the output file. Defaults to ''. If blank, will not write.
+        test_run (bool, optional): True points `etl()` at development assets. False points `etl()` at production assets. Defaults to False.
         load (bool, optional): Load the transformed data to a target feature service. Defaults to False.
-        feature_url (str, optional): The target feature service to which the transformed data should be loaded. Defaults to ''.
         include_deletes (bool, optional): a flag to include the soft-deleted records. True includes soft-deleted records. False filters-out soft-deleted records.
 
     Returns:
@@ -252,10 +251,14 @@ def etl(data_folder:str, load:bool=False, feature_url:str='', include_deletes:bo
         fpath = r'data\data_export_20240628'
         mydf = bu.etl(data_folder=fpath)
 
-        bu.etl(data_folder=fpath, include_deletes=True)
+        bu.dashboard_etl(data_folder=fpath, include_deletes=True)
     """
-    if load == True:
-        assert feature_url != '', print(f"You provided {feature_url}. If you want to load your transformed dataframe to a feature service, provide its url.")
+    if test_run == True:
+        data_folder = assets.WATER_DEV_DATA_FPATH
+        target_itemid = assets.WATER_DEV_QC_DASHBOARD_BACKEND # TODO: update this to an itemid
+    else:
+        data_folder = assets.DM_WATER_BACKUP_FPATH
+        target_itemid = assets.WATER_PROD_QC_DASHBOARD_BACKEND
 
     # Extract steps
     df_dict:dict = _extract(data_folder)
@@ -263,14 +266,12 @@ def etl(data_folder:str, load:bool=False, feature_url:str='', include_deletes:bo
     # Transform steps
     df:pd.DataFrame = tf._transform(df_dict=df_dict, include_deletes=include_deletes)
     
-    # Load steps
-    # TODO: add load steps
-    # if load == True:
-    #     ld._load(df=df, feature_url=feature_url)
-    #     print(f"Loaded feature to `{feature_url}`")
-
     # QC checks
-    _quality_control(df)
+    tf._quality_control(df)
+
+    # TODO:
+    # if load == True:
+    #     _load_feature(df, target_itemid)
 
     return df
 
@@ -280,81 +281,23 @@ def wqp_wqx(data_folder:str, include_deletes:bool=False) -> pd.DataFrame:
 
     return df
 
-def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
-    """Enforce business logic to quality-control the output of the pipeline"""
-
-    nullables = [# columns that are nullable for all rows
-        'paper_url1' # should be present for most records before 2018, but field will be blank until user reviews the record (reviewing the record triggers the logic that populates the field from the lookup table)
-        ,'paper_url2' # will be NA for nearly all rows
-        ,'analytical_method_id'
-        ,'method_detection_limit' # 
-        ,'review_notes'
-    ]
-    non_nullables = [x for x in df.columns if x not in nullables]
-    for c in non_nullables:
-        if df[c].isna().all():
-            print("")
-            print(f'WARNING (a): non-nullable field `{c}` is null in all rows')
-            print("")
-
-
-    # business rule-checking logic
-    # if `review_status` IN ['verified', 'in_review'], the following fields are non-nullable
-
-    statuses = ['verified', 'in_review']
-    non_nullables = [
-            'record_reviewers'
-            ,'review_date'
-            ,'review_time'
-            ,'entry_review_date'
-            ,'entry_review_time'
-            ,'field_crew'
-            ,'sampleability'
-            ,'delete_record'
-            ,'survey_complete'
-            ,'form_version'
-            ,'project_id'
-            ,'skip_req_observations'
-            ,'skip_req_ysi'
-            ,'skip_req_flowtracker'
-            ,'skip_req_grabsample'
-            ,'skip_req_photo'
-            ]
-
-    for c in non_nullables:
-        mask = (df['review_status'].isin(statuses)) & (df[c].isna()) & (df['delete_record'].isna()==False) & (df['delete_record']!='yes')
-        if len(df[mask]) >0:
-                print("")
-                print(f'WARNING (b): non-nullable field `{c}` is null in {round(((len(df[mask]))/len(df)*100),2)}% of rows')
-                print("")
-
-
-    # # if `data_type` == 'float', the following fields are non-nullable
-    #     [
-    #         'Result_Unit'
-    #     ]
-    non_nullables = ['Result_Unit']
-    for c in non_nullables:
-        mask = (df['data_type']=='float') & (df[c].isna())
-        if len(df[mask]) > 0:
-                print("")
-                print(f'WARNING (c): non-nullable field `{c}` is null in {round(((len(df[mask]))/len(df)*100),2)}% of rows')
-                print("")
-
-    # check for duplicate `activity_group_id`s for each `SiteVisitParentGlobalID`
-    # TODO
-
-    return df
-
-def _extract(data_folder:str) -> pd.DataFrame:
+def _extract(data_folder:str) -> dict:
     """Call-stacking function for extract steps
 
     Args:
-        data_folder (str): _description_
+        data_folder (str): relative or absolute filepath to a folder containing timestamped folders containing the .zip csv-collection downloaded from AGOL.
 
     Returns:
-        pd.DataFrame: _description_
+        dict: A dictionary of NCRN water monitoring data in relational form; one table in the .zip form `data_folder` becomes one key-value pair in the dictionary.
     """
+    # find the newest folder in a given folder
+    # use the filenames to find the newest timestamp
+    dirs = [x for x in os.listdir(data_folder) if os.path.isdir(os.path.join(data_folder,x))]
+
+    # look at the contents of that newest folder and find a .zip file with 'csv' in the filename
+    # what happens if there are two?!?! Or zero?!?!
+    # unzip the file
+
     # extract each table
     df_dict:dict = {}
     for tbl in assets.TBLS:
@@ -363,3 +306,9 @@ def _extract(data_folder:str) -> pd.DataFrame:
         df_dict[tbl] = df
 
     return df_dict
+
+def _load_feature(df:pd.DataFrame, target_itemid:str) -> bool:
+
+    outcome = True
+
+    return outcome
