@@ -317,11 +317,15 @@ def _extract(data_folder:str) -> dict:
     # extract each table
     extracted_dir = os.path.join(newest_data_folder, newdir)
     tbls = os.listdir(extracted_dir)
-    tbls = [os.path.join(extracted_dir, x) for x in tbls if '_0' in x or 'ysi' in x or 'grabsample' in x]
-    df_dict:dict = {}
-    for tbl in tbls:
-        df = pd.read_csv(tbl)
-        df_dict[tbl] = df
+    tbls_fnames = [x for x in tbls if '_0' in x or 'ysi' in x or 'grabsample' in x]
+    for i in range(len(tbls_fnames)):
+        if '_0' in tbls_fnames[i]:
+            tbls_fnames[i] = 'tbl_main'
+        else:
+            tbls_fnames[i] = tbls_fnames[i].rsplit('_',1)[0]
+    tbls_fpaths = [os.path.join(extracted_dir, x) for x in tbls if '_0' in x or 'ysi' in x or 'grabsample' in x]
+    assert len(tbls_fnames) == len(tbls_fpaths)
+    df_dict:dict = {tbls_fnames[i]: {'fpath':tbls_fpaths[i], 'df':pd.read_csv(tbls_fpaths[i])} for i in range(len(tbls_fnames))}
 
     return df_dict
 

@@ -6,10 +6,10 @@ import src.assets as assets
 
 def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
 
-    tfm_site_visits = _transform_site_visits(tbl=df_dict[assets.TBLS[0]].copy(), include_deletes=include_deletes) # site-visit level data (location, datetime, field crew names, etc.)
-    tfm_tbl_main = _transform_tbl_main(tbl_main=df_dict[assets.TBLS[0]].copy(), include_deletes=include_deletes) # fields that are one-to-one with site visits
-    tfm_tbl_ysi = _transform_tbl_ysi(tbl_ysi=df_dict[assets.TBLS[1]].copy(), include_deletes=include_deletes) # ysi fields that are zero or one-to-many with site visits
-    tfm_tbl_grabsample = _transform_tbl_grabsample(tbl_grabsample=df_dict[assets.TBLS[2]].copy(), include_deletes=include_deletes) # grabsample fields that are zero or one-to-many with site visits
+    tfm_site_visits = _transform_site_visits(tbl=df_dict['tbl_main']['df'].copy(), include_deletes=include_deletes) # site-visit level data (location, datetime, field crew names, etc.)
+    tfm_tbl_main = _transform_tbl_main(tbl_main=df_dict['tbl_main']['df'].copy(), include_deletes=include_deletes) # fields that are one-to-one with site visits
+    tfm_tbl_ysi = _transform_tbl_ysi(tbl_ysi=df_dict['tbl_ysi']['df'].copy(), include_deletes=include_deletes) # ysi fields that are zero or one-to-many with site visits
+    tfm_tbl_grabsample = _transform_tbl_grabsample(tbl_grabsample=df_dict['tbl_grabsample']['df'].copy(), include_deletes=include_deletes) # grabsample fields that are zero or one-to-many with site visits
 
     df = pd.concat([tfm_tbl_main, tfm_tbl_ysi, tfm_tbl_grabsample])
     df = pd.merge(tfm_site_visits, df, left_on='SiteVisitGlobalID', right_on='ParentGlobalID')
