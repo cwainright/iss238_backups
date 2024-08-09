@@ -165,3 +165,55 @@ def _download_csvs(newpath:str, verbose:bool, dir_ext:str) -> None:
                 utils._add_log_entry(log_timestamp=dir_ext, src_file=v, log_dest=os.path.join(newpath, fname.rsplit('\\',1)[1]), log_result=log_res)
 
     return None
+
+def _load_feature(csv_filepath:pd.DataFrame, target_itemid:str) -> bool:
+    """Loads a csv to a hosted feature layer in AGOL
+
+    Args:
+        csv_filepath (pd.DataFrame): _description_
+        target_itemid (str): _description_
+
+    Returns:
+        bool: _description_
+    """
+
+    # https://developers.arcgis.com/python/samples/overwriting-feature-layers/
+
+    outcome = True
+
+    return outcome
+
+def _save_dashboard_csv(df:pd.DataFrame, data_folder:str, verbose:bool) -> None:
+
+    # connect to AGOL
+    # find the item.name at 
+    gis = GIS('home') # update to user/pw 
+    item = gis.content.get(assets.WATER_PROD_QC_DASHBOARD_BACKEND)
+    
+    dirs = [x for x in os.listdir(data_folder) if os.path.isdir(os.path.join(data_folder,x))]
+    newest_data_folder = os.path.join(data_folder, max(dirs))
+    fname = os.path.join(newest_data_folder, f'{item.title}.csv')
+    df.to_csv(fname, index=False)
+    if verbose == True:
+        print(f'Wrote csv to {fname=}')
+    
+    return None
+
+def _update_authoritative_dataset(df:pd.DataFrame) -> pd.DataFrame:
+    # go to the directory with the prod data and find the newest copy available
+    data_folder = assets.WATER_PROD_WQP
+    dirs = [x for x in os.listdir(data_folder) if os.path.isdir(os.path.join(data_folder,x))]
+    newest_data_folder = os.path.join(data_folder, max(dirs))
+    assert os.path.isdir(newest_data_folder), print(f'data folder {newest_data_folder=} does not exist')
+    targets = os.listdir(newest_data_folder)
+    targets = [x for x in targets if x.endswith('.csv') and 'wqp' in x]
+    assert len(targets) > 0, print(f'Returned zero csv collections in {data_folder=}')
+    target = os.path.join(newest_data_folder, max(targets))
+    existing = pd.read_csv(target)
+
+    wqp = pd.DataFrame()
+
+
+
+    return wqp
+    
