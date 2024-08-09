@@ -29,11 +29,16 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     df = _gather_others(df)
     df = _scrub_locs(df)
     df = _cast_result_by_type(df)
+    df = _calc_week_of_year(df)
 
     df_a = df[df['num_result'].isna()==False].head(len(df)).copy()
     df_b = df[df['num_result'].isna()].head(len(df)).copy()
     df = pd.concat([df_a,df_b])
 
+    return df
+
+def _calc_week_of_year(df:pd.DataFrame) -> pd.DataFrame:
+    df['week_of_year'] = pd.to_datetime(df['review_date']).dt.isocalendar().week
     return df
 
 def _transform_site_visits(tbl:pd.DataFrame, include_deletes:bool) -> pd.DataFrame:
