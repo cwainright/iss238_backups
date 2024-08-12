@@ -5,6 +5,7 @@ import src.water_backup as wtb
 import src.transform as tf
 import datetime as dt
 import pandas as pd
+import time
 
 """
 Demonstrates how to upload large file
@@ -55,14 +56,10 @@ def backup_water(dest_dir:str=assets.DM_WATER_BACKUP_FPATH, verbose:bool=False, 
 
     Examples:
         import src.utils as utils
-
-        # example 1, copy AGOL assets to local folder called `output/` with interactive feedback `verbose` on.
-        utils.backup_water(dest_dir='output', verbose=True)
-
-        # example 2, copy AGOL assets to authoritative backup location with interactive feedback `verbose` off.
-        utils.backup_water()
+        utils.backup_water(verbose=True, test_run=False)
 
     """
+    start_time = time.time()
     assert os.path.exists(dest_dir)==True, print(f'You provided {dest_dir=}, which is a directory that does not exist or is not visible to this computer. Check your filepath.')
 
     # make new directory to receive backup files
@@ -99,6 +96,14 @@ def backup_water(dest_dir:str=assets.DM_WATER_BACKUP_FPATH, verbose:bool=False, 
     # wqp_wqx()
     # dashboard_etl()
 
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    elapsed_time = str(dt.timedelta(seconds=elapsed_time))
+    elapsed_time = elapsed_time.split('.')[0]
+
+    if verbose == True:
+        print(f'`backup_water()` completed. Elapsed time: {elapsed_time}')
+
     return None
 
 def backup_veg(src_dir:str=assets.VEG_T_DRIVE_FPATH, dest_dir:str=assets.DM_VEG_BACKUP_FPATH, filetypes:list=['.accdb'], verbose:bool=False) -> None:
@@ -125,6 +130,7 @@ def backup_veg(src_dir:str=assets.VEG_T_DRIVE_FPATH, dest_dir:str=assets.DM_VEG_
         utils.backup_veg()
 
     """
+    start_time = time.time()
     # check that the source directory and file exist
     assert os.path.exists(src_dir)==True, print(f'You provided {src_dir=}, which is a directory that does not exist or is not visible to this computer. Check your filepath.')
     assert os.path.exists(dest_dir)==True, print(f'You provided {dest_dir=}, which is a directory that does not exist or is not visible to this computer. Check your filepath.')
@@ -134,6 +140,14 @@ def backup_veg(src_dir:str=assets.VEG_T_DRIVE_FPATH, dest_dir:str=assets.DM_VEG_
     dir_ext:str = str(dt.datetime.now()).replace(' ','_').replace('.','_').replace(':','')
     newpath:str = _make_new_backup_dir(dest_dir=dest_dir, verbose=verbose, dir_ext=dir_ext)
     _backup_make_file_copies(dir_ext=dir_ext, newpath=newpath, src_dir=src_dir, filetypes=filetypes, verbose=verbose)
+
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    elapsed_time = str(dt.timedelta(seconds=elapsed_time))
+    elapsed_time = elapsed_time.split('.')[0]
+
+    if verbose == True:
+        print(f'`backup_veg()` completed. Elapsed time: {elapsed_time}')
 
     return None
 
@@ -241,15 +255,16 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
         include_deletes (bool, optional): a flag to include the soft-deleted records. True includes soft-deleted records. False filters-out soft-deleted records.
 
     Returns:
-        pd.DataFrame: flattened dataframe of ncrn water results, flattened and melted to long format for formatting and
+        If `test_Run` == True:
+            pd.DataFrame: flattened dataframe of ncrn water results, flattened and melted to long format for formatting
+        else:
+            bool: True when all ETL steps were successful; False when one or more steps failed
 
     Examples:
         import src.utils as utils
-        fpath = r'data\data_export_20240628'
-        mydf = bu.etl(data_folder=fpath)
-
-        bu.dashboard_etl(data_folder=fpath, include_deletes=True)
+        utils.dashboard_etl(test_run=False, include_deletes=False, verbose=True)
     """
+    start_time = time.time()
 
     # Extract steps
     newest_data_folder:str = _find_newest_folder(assets.DM_WATER_BACKUP_FPATH) # find the newest timestamp folder
@@ -264,11 +279,23 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
 
     if test_run == True:
         print('df returned')
+        if verbose == True:
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            elapsed_time = str(dt.timedelta(seconds=elapsed_time))
+            elapsed_time = elapsed_time.split('.')[0]
+            print(f'`dashboard_etl()` completed. Elapsed time: {elapsed_time}')
         return df
     else:
         # TODO:
         fname = wtb._save_dashboard_csv(df, newest_data_folder, verbose)
-        # wtb._load_feature(fname, assets.WATER_PROD_QC_DASHBOARD_BACKEND, verbose)
+        wtb._load_feature(fname, assets.WATER_PROD_QC_DASHBOARD_BACKEND, verbose)
+        if verbose == True:
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            elapsed_time = str(dt.timedelta(seconds=elapsed_time))
+            elapsed_time = elapsed_time.split('.')[0]
+            print(f'`dashboard_etl()` completed. Elapsed time: {elapsed_time}')
         return True
 
 def wqp_wqx(test_run:bool=False, include_deletes:bool=False, verbose:bool=False) -> pd.DataFrame:

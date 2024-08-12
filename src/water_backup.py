@@ -1,5 +1,6 @@
 from arcpy.da import TableToNumPyArray, ExtendTable
 from arcgis.gis import GIS
+from arcgis.features import FeatureLayerCollection
 import arcpy
 import pandas as pd
 import numpy as np
@@ -166,25 +167,44 @@ def _download_csvs(newpath:str, verbose:bool, dir_ext:str) -> None:
 
     return None
 
-def _load_feature(csv_filepath:pd.DataFrame, target_itemid:str, verbose:bool) -> bool:
+def _load_feature(csv_filepath:pd.DataFrame, target_itemid:str, verbose:bool) -> None:
     """Loads a csv to a hosted feature layer in AGOL
 
     Args:
-        csv_filepath (pd.DataFrame): _description_
-        target_itemid (str): _description_
+        csv_filepath (pd.DataFrame): relative or absolute filepath to the csv you want to update the feature layer to
+        target_itemid (str): The AGOL itemid for the dashboard's backend hosted feature layer
 
     Returns:
-        bool: _description_
+        None
     """
-
+    dir_ext:str = csv_filepath.rsplit('\\',2)[1]
     # https://developers.arcgis.com/python/samples/overwriting-feature-layers/
+    try:
+        gis = GIS('home') # update to user/pw 
+        item = gis.content.get(target_itemid)
+        dashboard_be = FeatureLayerCollection.fromitem(item)
+        if csv_filepath.rsplit('.csv',1)[0].endswith(dashboard_be.properties.layers[0].name):
+            dashboard_be.manager.overwrite(csv_filepath)
+            # ftype:str = 'CSV'
+            # fname:str = csv_filepath.rsplit('\\',1)[1].replace('.csv','')
+            # imported_item = gis.content.search(fname, ftype)
+            # if imported_item.title == item.title and imported_item[0].itemid != target_itemid: # nuke prod make dev sad...
+            #     pass # TODO: delete the csv
+            log_res = 'success - overwrote dashboard feature'
+            utils._add_log_entry(log_timestamp=dir_ext, src_file=assets.WATER_PROD_QC_DASHBOARD_BACKEND, log_dest=csv_filepath, log_result=log_res)
 
-    outcome = True
+            if verbose == True:
+                print(f'Uploaded {csv_filepath=} to {target_itemid=}')
+        else:
+            print(f'Name mismatch: {csv_filepath=} to {target_itemid=}')
+            raise Exception
+    except:
+        log_res='fail - did not overwrite dashboard backend feature'
+        utils._add_log_entry(log_timestamp=dir_ext, src_file=assets.WATER_PROD_QC_DASHBOARD_BACKEND, log_dest=csv_filepath, log_result=log_res)
+        if verbose == True:
+            print(f'Failed to upload {csv_filepath=} to {target_itemid=}')
 
-    if verbose == True:
-        print(f'Wrote csv to {csv_filepath=} to {target_itemid=}')
-
-    return outcome
+    return None
 
 def _save_dashboard_csv(df:pd.DataFrame, newest_data_folder:str, verbose:bool) -> None:
 
@@ -201,11 +221,11 @@ def _save_dashboard_csv(df:pd.DataFrame, newest_data_folder:str, verbose:bool) -
         utils._add_log_entry(log_timestamp=dir_ext, src_file=assets.WATER_PROD_QC_DASHBOARD_BACKEND, log_dest=fname, log_result=log_res)
         if verbose == True:
             print(f'Wrote csv to {fname=}')
+        return fname
     except:
         log_res='fail - did not write dashboard backend to csv'
         utils._add_log_entry(log_timestamp=dir_ext, src_file=assets.WATER_PROD_QC_DASHBOARD_BACKEND, log_dest=fname, log_result=log_res)
-    
-    return None
+        return None
 
 def _update_authoritative_dataset(df:pd.DataFrame) -> pd.DataFrame:
     # go to the directory with the prod data and find the newest copy available
