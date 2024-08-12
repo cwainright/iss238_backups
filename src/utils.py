@@ -251,13 +251,10 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
 
         bu.dashboard_etl(data_folder=fpath, include_deletes=True)
     """
-    if test_run == True:
-        data_folder = assets.WATER_DEV_DATA_FPATH
-    else:
-        data_folder = assets.DM_WATER_BACKUP_FPATH
 
     # Extract steps
-    df_dict:dict = _extract(data_folder)
+    newest_data_folder:str = _find_newest_folder(assets.DM_WATER_BACKUP_FPATH) # find the newest timestamp folder
+    df_dict:dict = _extract(newest_data_folder) # extract csvs to dataframes
     
     # Transform steps
     df:pd.DataFrame = tf._transform(df_dict=df_dict, include_deletes=include_deletes)
@@ -271,7 +268,7 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
         return df
     else:
         # TODO:
-        # fname = wtb._save_dashboard_csv(df, data_folder, verbose)
+        # fname = wtb._save_dashboard_csv(df, newest_data_folder, verbose)
         # wtb._load_feature(fname, assets.WATER_PROD_QC_DASHBOARD_BACKEND, verbose)
         print('df returned')
         return df
@@ -301,7 +298,7 @@ def wqp_wqx(test_run:bool=False, include_deletes:bool=False, verbose:bool=False)
         return True
 
 
-def _extract(data_folder:str) -> dict:
+def _extract(newest_data_folder:str) -> dict:
     """Call-stacking function for extract steps
 
     Args:
@@ -310,16 +307,11 @@ def _extract(data_folder:str) -> dict:
     Returns:
         dict: A dictionary of NCRN water monitoring data in relational form; one table in the .zip form `data_folder` becomes one key-value pair in the dictionary.
     """
-    # find the newest folder in a given folder
-    # use the filenames to find the newest timestamp
-    dirs = [x for x in os.listdir(data_folder) if os.path.isdir(os.path.join(data_folder,x))]
-    newest_data_folder = os.path.join(data_folder, max(dirs))
-    assert os.path.isdir(newest_data_folder), print(f'data folder {newest_data_folder=} does not exist')
 
     # look at the contents of that newest folder and find a .zip file with 'csv' in the filename
     targets = os.listdir(newest_data_folder)
     targets = [x for x in targets if x.endswith('.zip') and 'csv' in x]
-    assert len(targets) > 0, print(f'Returned zero csv collections in {data_folder=}')
+    assert len(targets) > 0, print(f'Returned zero csv collections in {newest_data_folder=}')
     target = os.path.join(newest_data_folder, max(targets))
 
     # unzip the files
@@ -340,3 +332,14 @@ def _extract(data_folder:str) -> dict:
     df_dict:dict = {tbls_fnames[i]: {'fpath':tbls_fpaths[i], 'df':pd.read_csv(tbls_fpaths[i])} for i in range(len(tbls_fnames))}
 
     return df_dict
+
+def _find_newest_folder(data_folder:str) -> str:
+
+    # find the newest folder in a given folder
+    # use the filenames to find the newest timestamp
+    dirs = [x for x in os.listdir(data_folder) if os.path.isdir(os.path.join(data_folder,x))]
+    newest_data_folder = os.path.join(data_folder, max(dirs))
+    assert os.path.isdir(newest_data_folder), print(f'data folder {newest_data_folder=} does not exist')
+
+    return newest_data_folder
+
