@@ -237,8 +237,7 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
 
     Args:
         dest_dir (str, optional): relative or absolute filepath to a folder where you want to save the output file. Defaults to ''. If blank, will not write.
-        test_run (bool, optional): True points `etl()` at development assets. False points `etl()` at production assets. Defaults to False.
-        load (bool, optional): Load the transformed data to a target feature service. Defaults to False.
+        test_run (bool, optional): False returns bool (True when all steps were successful) and overwrites the dashboard backend in AGOL. True returns a dataframe and does not overwrite development assets feature service. Defaults to False.
         include_deletes (bool, optional): a flag to include the soft-deleted records. True includes soft-deleted records. False filters-out soft-deleted records.
 
     Returns:
@@ -268,10 +267,9 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
         return df
     else:
         # TODO:
-        # fname = wtb._save_dashboard_csv(df, newest_data_folder, verbose)
+        fname = wtb._save_dashboard_csv(df, newest_data_folder, verbose)
         # wtb._load_feature(fname, assets.WATER_PROD_QC_DASHBOARD_BACKEND, verbose)
-        print('df returned')
-        return df
+        return True
 
 def wqp_wqx(test_run:bool=False, include_deletes:bool=False, verbose:bool=False) -> pd.DataFrame:
     if test_run == True:

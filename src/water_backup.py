@@ -166,7 +166,7 @@ def _download_csvs(newpath:str, verbose:bool, dir_ext:str) -> None:
 
     return None
 
-def _load_feature(csv_filepath:pd.DataFrame, target_itemid:str) -> bool:
+def _load_feature(csv_filepath:pd.DataFrame, target_itemid:str, verbose:bool) -> bool:
     """Loads a csv to a hosted feature layer in AGOL
 
     Args:
@@ -181,21 +181,29 @@ def _load_feature(csv_filepath:pd.DataFrame, target_itemid:str) -> bool:
 
     outcome = True
 
+    if verbose == True:
+        print(f'Wrote csv to {csv_filepath=} to {target_itemid=}')
+
     return outcome
 
-def _save_dashboard_csv(df:pd.DataFrame, data_folder:str, verbose:bool) -> None:
+def _save_dashboard_csv(df:pd.DataFrame, newest_data_folder:str, verbose:bool) -> None:
 
     # connect to AGOL
     # find the item.name at 
     gis = GIS('home') # update to user/pw 
     item = gis.content.get(assets.WATER_PROD_QC_DASHBOARD_BACKEND)
     
-    dirs = [x for x in os.listdir(data_folder) if os.path.isdir(os.path.join(data_folder,x))]
-    newest_data_folder = os.path.join(data_folder, max(dirs))
     fname = os.path.join(newest_data_folder, f'{item.title}.csv')
-    df.to_csv(fname, index=False)
-    if verbose == True:
-        print(f'Wrote csv to {fname=}')
+    dir_ext:str = newest_data_folder.rsplit('\\',1)[1]
+    try:
+        df.to_csv(fname, index=False)
+        log_res = 'success'
+        utils._add_log_entry(log_timestamp=dir_ext, src_file=assets.WATER_PROD_QC_DASHBOARD_BACKEND, log_dest=fname, log_result=log_res)
+        if verbose == True:
+            print(f'Wrote csv to {fname=}')
+    except:
+        log_res='fail - did not write dashboard backend to csv'
+        utils._add_log_entry(log_timestamp=dir_ext, src_file=assets.WATER_PROD_QC_DASHBOARD_BACKEND, log_dest=fname, log_result=log_res)
     
     return None
 
