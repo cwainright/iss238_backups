@@ -34,6 +34,7 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     df_a = df[df['num_result'].isna()==False].head(len(df)).copy()
     df_b = df[df['num_result'].isna()].head(len(df)).copy()
     df = pd.concat([df_a,df_b])
+    df = df[df['data_quality_flag']!='permanently_missing']
 
     return df
 
