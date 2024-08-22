@@ -35,6 +35,58 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     df_b = df[df['num_result'].isna()].head(len(df)).copy()
     df = pd.concat([df_a,df_b])
     df = df[df['data_quality_flag']!='permanently_missing']
+    df = _soft_constraints(df)
+
+    return df
+
+def _soft_constraints(df:pd.DataFrame) -> pd.DataFrame:
+    """add a warning message for results that exceed soft-constraints
+
+    This becomes a summary table in the QC dashboard
+
+    Args:
+        df (pd.DataFrame): flattened dataframe of NCRN water results
+
+    Returns:
+        pd.DataFrame: flattened dataframe of NCRN water results with flags added
+    """
+
+    df['year'] = df['activity_start_date'].str.split(pat='-',n=1).str[0]
+    df['month'] = df['activity_start_date'].str.split(pat='-').str[1]
+    df['key'] = df['location_id']+df['year']+df['month']+df['Characteristic_Name']
+
+    constraints = pd.read_csv(assets.SOFT_CONSTRAINTS)
+    constraints.rename(columns={
+        'Location_ID':'location_id'
+        ,'Month':'month'
+        ,'Year':'year'
+    },inplace=True)
+    tmp = constraints.melt(id_vars=['key','location_id','month','year'])
+    lows = tmp[tmp['variable'].str.contains('low_')].copy().reset_index(drop=True)
+    highs = tmp[tmp['variable'].str.contains('low_')==False].copy().reset_index(drop=True)
+    lows['variable'] = lows['variable'].str.replace('low_','')
+    highs['variable'] = highs['variable'].str.replace('high_','')
+    lows['key'] = lows['key']+lows['variable']
+    highs['key'] = highs['key']+highs['variable']
+    lows.rename(columns={
+        'value':'low'
+    },inplace=True)
+    highs.rename(columns={
+        'value':'high'
+    },inplace=True)
+    constraints = pd.merge(highs[['key','high']],lows[['key','low']], on='key')
+
+    df = pd.merge(df,constraints, on='key', how='left')
+    del df['key']
+    del df['year']
+    del df['month']
+    df['result_warning'] = None
+    mask = (df['data_type']=='float') & (df['num_result']<=df['low'])
+    df['result_warning'] = np.where(mask, f'result is below soft constraint', df['result_warning'])
+    # df[mask][['data_type','Characteristic_Name','activity_group_id','num_result','low','result_warning']] # sanity check
+    mask = (df['data_type']=='float') & (df['num_result']>=df['high'])
+    df['result_warning'] = np.where(mask, f'result is above soft constraint', df['result_warning'])
+    # df[mask][['data_type','Characteristic_Name','activity_group_id','num_result','high','result_warning']] # sanity check
 
     return df
 
