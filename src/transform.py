@@ -36,6 +36,8 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     df = pd.concat([df_a,df_b])
     df = df[df['data_quality_flag']!='permanently_missing']
     df = _soft_constraints(df)
+    mask = (df['Characteristic_Name'].str.contains('_notes')==False)
+    df = df[mask]
 
     return df
 
@@ -81,10 +83,10 @@ def _soft_constraints(df:pd.DataFrame) -> pd.DataFrame:
     del df['year']
     del df['month']
     df['result_warning'] = None
-    mask = (df['data_type']=='float') & (df['num_result']<=df['low'])
+    mask = (df['data_type']=='float') & (df['num_result']<=df['low']) & (df['review_status']!='verified')
     df['result_warning'] = np.where(mask, f'result is below soft constraint', df['result_warning'])
     # df[mask][['data_type','Characteristic_Name','activity_group_id','num_result','low','result_warning']] # sanity check
-    mask = (df['data_type']=='float') & (df['num_result']>=df['high'])
+    mask = (df['data_type']=='float') & (df['num_result']>=df['high']) & (df['review_status']!='verified')
     df['result_warning'] = np.where(mask, f'result is above soft constraint', df['result_warning'])
     # df[mask][['data_type','Characteristic_Name','activity_group_id','num_result','high','result_warning']] # sanity check
 
