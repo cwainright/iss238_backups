@@ -38,6 +38,10 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     df = _soft_constraints(df)
     mask = (df['Characteristic_Name'].str.contains('_notes')==False)
     df = df[mask]
+    ignores = ['landuse_category','dom_riparian_ter_veg_sp','channelized','bank_stability','entry_stream_phy_appear']
+    mask = (df['Characteristic_Name'].isin(ignores)==False)
+    df = df[mask]
+    df = df.reset_index(drop=True)
 
     return df
 
