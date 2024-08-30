@@ -38,7 +38,7 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     df = _soft_constraints(df)
     mask = (df['Characteristic_Name'].str.contains('_notes')==False)
     df = df[mask]
-    ignores = ['landuse_category','dom_riparian_ter_veg_sp','channelized','bank_stability','entry_stream_phy_appear']
+    ignores = ['anc_method','landuse_category','dom_riparian_ter_veg_sp','channelized','bank_stability','entry_stream_phy_appear']
     mask = (df['Characteristic_Name'].isin(ignores)==False)
     df = df[mask]
     df = df.reset_index(drop=True)
@@ -288,7 +288,7 @@ def _apply_data_types(tfm_tbl:pd.DataFrame) -> pd.DataFrame:
        'do_concentration', 'do_saturation', 'tds', 'ysi_increment_notes',
        'duplicate_y_n', 'lab', 'anc_bottle_size', 'nutrient_bottle_size',
        'anc', 'tn', 'tp', 'ammonia', 'orthophosphate', 'chlorine',
-       'nitrate']
+       'nitrate','anc_method']
 
     # for x in mycols:
     #     print(f"lookup['{x}'] = ['',None]")
@@ -356,6 +356,7 @@ def _apply_data_types(tfm_tbl:pd.DataFrame) -> pd.DataFrame:
     lookup['nitrate'] = ['float','mg/L']
     lookup['tdp'] = ['float','mg/L']
     lookup['tdn'] = ['float','mg/L']
+    lookup['anc_method'] = ['str',None]
 
     # sanity checks so we keep the lookup table up-to-date
     for char in tfm_tbl.Characteristic_Name:
