@@ -15,7 +15,7 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     df = pd.merge(tfm_site_visits, df, left_on='SiteVisitGlobalID', right_on='ParentGlobalID')
 
     # clean
-    excludes = ['x','y','entry_anc_btl_size','entry_other_nutrient_btl_size','entry_other_anc_btl_size','entry_nutrient_btl_size','entry_algae_description', 'entry_other_algae_description','stream_physical_appearance','entry_q_instrument','entry_other_q_instrument','entry_ysi_probe','entry_other_ysi_probe','entry_ysi_increment','entry_other_ysi_increment','entry_other_lab','entry_lab','duplicate_collected']
+    excludes = ['x','y','entry_anc_btl_size','entry_other_nutrient_btl_size','entry_other_anc_btl_size','entry_nutrient_btl_size','entry_algae_description', 'entry_other_algae_description','entry_q_instrument','entry_other_q_instrument','entry_ysi_probe','entry_other_ysi_probe','entry_ysi_increment','entry_other_ysi_increment','entry_other_lab','entry_lab','duplicate_collected']
     # excludes.extend([x for x in df.Characteristic_Name if 'flag'])
     mask = (df['Characteristic_Name'].isin(excludes)==False) & (df['Characteristic_Name'].isin(assets.SITE_VISIT_COLS)==False) & (df['Characteristic_Name'].str.contains('delete')==False) & (df['Characteristic_Name'].str.contains('flag')==False)
     df = df[mask]
@@ -357,6 +357,7 @@ def _apply_data_types(tfm_tbl:pd.DataFrame) -> pd.DataFrame:
     lookup['tdp'] = ['float','mg/L']
     lookup['tdn'] = ['float','mg/L']
     lookup['anc_method'] = ['string',None]
+    lookup['stream_physical_appearance'] = ['string',None]
 
     # sanity checks so we keep the lookup table up-to-date
     for char in tfm_tbl.Characteristic_Name:
