@@ -1,3 +1,38 @@
+"""
+Utilities for ETL of NCRN water data
+
+These utilities download NCRN data from AGOL in relational format and then:
+    a) back up source files for field and reviewer apps, the relational database, and update log files with backup results
+    a) transform and load flattened datasets in NCRN-specific format (for internal applications like dashboards that need internal-only attributes)
+    b) transform and load flattened datasets in wqp-wqx distribution format (for internal and external analysis-ready datasets)
+
+main.py is the main API for these utilities
+
+Initial release: 2024-11-06
+Author: CAW
+
+Requirements and caveats:
+To use these the src.utils module, you need an AGOL token and you need read/write permission for every hosted-feature the module calls.
+Review the assets.py module for all of the relevant hosted-features.
+The easiest way to earn an AGOL token is to open ArcGIS Pro, and log in to your account.
+A token is only valid for one session (i.e., while your computer is on), so you will need to renew your token after every computer restart.
+
+Examples:
+    import src.utils as utils
+    from arcgis.gis import GIS
+    import src.assets as src_assets
+
+    # before running the backup routine, confirm that you have a valid AGOL token
+    target_itemid = src_assets.WATER_PROD_QC_DASHBOARD_BACKEND
+    gis = GIS('home') # 'home' uses your active token (i.e., the token you generated from ArcGIS Pro). GIS(). If this fails, you do not have a valid token .
+    item = gis.content.get(target_itemid) # if this does not return a valid item ID, you do not have a valid token
+
+    # run the backup routine
+    utils.backup_water(verbose=True, test_run=False) # query prod
+    utils.dashboard_etl(test_run=False, include_deletes=False, verbose=True) # query prod
+
+"""
+
 import shutil
 import os
 import src.assets as assets
@@ -6,42 +41,7 @@ import src.transform as tf
 import datetime as dt
 import pandas as pd
 import time
-
-"""
-Demonstrates how to upload large file
-# https://github.com/vgrem/Office365-REST-Python-Client/blob/master/examples/sharepoint/files/upload_large.py
-
-
-import os
-
-from office365.sharepoint.client_context import ClientContext
-from tests import test_team_site_url, test_user_credentials
-
-
-def print_upload_progress(offset):
-    # type: (int) -> None
-    file_size = os.path.getsize(local_path)
-    print(
-        "Uploaded '{0}' bytes from '{1}'...[{2}%]".format(
-            offset, file_size, round(offset / file_size * 100, 2)
-        )
-    )
-
-
-ctx = ClientContext(test_team_site_url).with_credentials(test_user_credentials)
-
-target_url = "Shared Documents/archive"
-target_folder = ctx.web.get_folder_by_server_relative_url(target_url)
-size_chunk = 1000000
-local_path = "../../../tests/data/big_buck_bunny.mp4"
-with open(local_path, "rb") as f:
-    uploaded_file = target_folder.files.create_upload_session(
-        f, size_chunk, print_upload_progress, "big_buck_bunny_v2.mp4"
-    ).execute_query()
-
-print("File {0} has been uploaded successfully".format(uploaded_file.serverRelativeUrl))
-"""
-
+import numpy as np
 
 def backup_water(dest_dir:str=assets.DM_WATER_BACKUP_FPATH, verbose:bool=False, test_run:bool=False) -> None:
     """Generic to make backups of NCRN water source files
@@ -299,28 +299,298 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
         return True
 
 def wqp_wqx(test_run:bool=False, include_deletes:bool=False, verbose:bool=False) -> pd.DataFrame:
-    if test_run == True:
-        data_folder = assets.WATER_DEV_DATA_FPATH
-    else:
-        data_folder = assets.DM_WATER_BACKUP_FPATH
-
-    # TODO: crosswalk the etl output into wqxwqp-output format
-    df_dict:dict = _extract(data_folder)
+    # Extract steps
+    newest_data_folder:str = _find_newest_folder(assets.DM_WATER_BACKUP_FPATH) # find the newest timestamp folder
+    df_dict:dict = _extract(newest_data_folder) # extract csvs to dataframes
+    
+    # Transform steps
     df:pd.DataFrame = tf._transform(df_dict=df_dict, include_deletes=include_deletes)
-    if verbose == True:
-        tf._quality_control(df)
 
-    # read in the existing authoritiative wqp dataset
-    # update existing data
-    # if there's a verified record in `df`, replace the site visit 
-    wqp = wtb._update_authoritative_dataset(df)
+    excludes = [
+        'left_bank_riparian_width'
+        ,'right_bank_riparian_width'
+        ,'duplicate_y_n'
+        ,'nutrient_bottle_size'
+        ,'anc_bottle_size'
+        ,'ysi_increment_distance'
+        ,'entry_other_stream_phy_appear'
+        ,'discharge_instrument'
+        ,'ysi_probe'
+    ]
+    mask = (df['Characteristic_Name'].isin(excludes)==False)
+    df = df[mask]
+    df.reset_index(inplace=True, drop=True)
 
-    if test_run == True:
-        print('df returned')
-        return wqp
-    else:
-        # TODO:
-        return True
+    # import the example file
+    example:pd.DataFrame = pd.read_csv(assets.EXAMPLE_WQX_WQP)
+    if 'Unnamed: 0' in example.columns:
+        del example['Unnamed: 0']
+
+    # alias characteristics from NCRN characteristic names to wqp names
+    # example[example['ResultAnalyticalMethod/MethodIdentifier']=='NCRN_WQ_LAB'].CharacteristicName.unique()
+
+    # pivot a column to a characteristic
+    pivots = [
+        'sampleability'
+        ,'visit_type'
+    ]
+    for c in pivots:
+        ncol = len(df.columns)
+        nrow = len(df)
+
+        tmp = df.copy()
+        tmp = tmp.drop_duplicates('activity_group_id')
+        tmp['Characteristic_Name'] = c
+        tmp['str_result'] = df[c]
+        tmp['high']=np.NaN
+        tmp['low']=np.NaN
+        tmp['result_warning']=None
+        tmp['data_type'] = 'string'
+        tmp['Result_Unit'] = None
+        tmp['num_result'] = np.NaN
+        df = pd.concat([df,tmp])
+        df.reset_index(inplace=True, drop=True)
+
+        assert len(df.columns) == ncol # sanity check
+        assert len(df) > nrow # sanity check
+
+    # pivot a characteristic to a column
+    pivots = [
+        'lab'
+    ]
+
+    for c in pivots:
+        ncol = len(df.columns)
+        nrow = len(df)
+        
+        tmp = df.copy()
+        mask = (df['Characteristic_Name']==c)
+        df = df[~mask].copy()
+        tmp = tmp[mask].copy()
+        mask = (tmp['str_result'].isna()==False)
+        tmp = tmp[mask].copy()
+        tmp = tmp.drop_duplicates('activity_group_id')
+        tmp = tmp[['activity_group_id','str_result']]
+        tmp.rename(columns={'str_result':'lab'}, inplace=True)
+
+        df = pd.merge(left=df, right=tmp, how='left', on='activity_group_id')
+        df.reset_index(drop=True, inplace=True)
+
+    assert len(df.columns) == ncol+len(pivots) # sanity check
+    assert len(df) < nrow # sanity check
+
+    # make a lookup
+    lookup = {}
+    allchars = []
+    for x in example['ResultAnalyticalMethod/MethodIdentifier'].unique():
+        if str(x).startswith('NCRN_WQ'):
+            lookup[x]={}
+            mask = (example['ResultAnalyticalMethod/MethodIdentifier']==x)
+            chars = example[mask].CharacteristicName.unique()
+            for c in chars:
+                lookup[x][c] = None
+
+    lookup['NCRN_WQ_LAB']['Acid Neutralizing Capacity (ANC)'] = 'anc'
+    lookup['NCRN_WQ_LAB']['Total Nitrogen, mixed forms']='tn'
+    lookup['NCRN_WQ_LAB']['Nitrogen, ammonia (NH3) as NH3']='ammonia'
+    lookup['NCRN_WQ_LAB']['Total Phosphorus, mixed forms']='tp'
+    lookup['NCRN_WQ_LAB']['Phosphorus, orthophosphate as PO4']='orthophosphate'
+    lookup['NCRN_WQ_LAB']['Chlorine']='chlorine'
+    lookup['NCRN_WQ_LAB']['Nitrogen, Nitrate']='nitrate'
+    lookup['NCRN_WQ_LAB']['Nitrogen, dissolved']='tdn'
+    lookup['NCRN_WQ_LAB']['Phosphorus, dissolved']='tdp'
+    lookup['NCRN_WQ_LAB']['Turbidity']='turbidity'
+    lookup['NCRN_WQ_KES']['Temperature, air']='air_temperature'
+    lookup['NCRN_WQ_HABINV']['Algae, substrate rock/bank cover (choice list)']='algae_cover_percent'
+    lookup['NCRN_WQ_HABINV']['Algae description']='algae_description'
+    lookup['NCRN_WQ_HABINV']['Stream Physical Appearance (choice list)']='stream_physical_appearance'
+    lookup['NCRN_WQ_HABINV']['RBP Channel Flow Status (choice list)']='flow_status'
+    lookup['NCRN_WQ_HABINV']['sampleability']='sampleability'
+    lookup['NCRN_WQ_HABINV']['visit type']='visit_type'
+    lookup['NCRN_WQ_HABINV']['rain in last 24 hours']='rain_last_24'
+    lookup['NCRN_WQ_HABINV']['photos taken at site']='photos_y_n'
+    lookup['NCRN_WQ_HABINV']['Weather Condition (WMO Code 4501) (choice list)']='weather_condition'
+    lookup['NCRN_WQ_HABINV']['RBP2, Low G, Riparian Vegetative Zone Width, Left Bank (choice list)']=None
+    lookup['NCRN_WQ_HABINV']['RBP2, Low G, Riparian Vegetative Zone Width, Right Bank (choice list)']=None
+    lookup['NCRN_WQ_HABINV']['RBP2, Watershed, Predominant Surrounding Landuse (choice list)']=None
+    lookup['NCRN_WQ_HABINV']['RBP2, Riparian Vegetation, Dominant Species Present (choice list)']=None
+    lookup['NCRN_WQ_HABINV']['RBP Channelized Y/N (choice list)']=None
+    lookup['NCRN_WQ_HABINV']['Bank erosion stability (choice list)']=None
+    lookup['NCRN_WQ_FLTK']['Wetted Width']='wetted_width'
+    lookup['NCRN_WQ_FLTK']['Base flow discharge']='discharge'
+    lookup['NCRN_WQ_FLTK']['Cross-Section Depth']='mean_crossection_depth'
+    lookup['NCRN_WQ_FLTK']['RBP Stream Velocity']='mean_velocity'
+    lookup['NCRN_WQ_YSI']['Description of sequential increment from right bank']='ysi_increment'
+    lookup['NCRN_WQ_YSI']['Solids, Dissolved (TDS)']='tds'
+    lookup['NCRN_WQ_YSI']['Dissolved oxygen (DO)']='do_concentration'
+    lookup['NCRN_WQ_YSI']['Salinity']='salinity'
+    lookup['NCRN_WQ_YSI']['Conductivity']='conductivity'
+    lookup['NCRN_WQ_YSI']['Temperature, water']='water_temperature'
+    lookup['NCRN_WQ_YSI']['Specific conductance']='specific_conductance'
+    lookup['NCRN_WQ_YSI']['pH']='ph'
+    lookup['NCRN_WQ_YSI']['Dissolved oxygen saturation']='do_saturation'
+    lookup['NCRN_WQ_YSI']['Barometric pressure']='barometric_pressure'
+
+    # clean the lookup table
+    tmp = {}
+    for k in lookup.keys():
+        tmp[k] = {}
+        for x,y in lookup[k].items():
+            if y is not None:
+                tmp[k][x]=y
+    lookup = tmp.copy()
+    for k in lookup.keys():
+        for x,y in lookup[k].items():
+            allchars.append(y)
+    assert len([x for x in df.Characteristic_Name.unique() if x not in allchars]) == 0 # sanity check # check that the lookup is complete
+    
+    # pivot the lookup table
+    lu = pd.DataFrame(lookup).reset_index()
+    lu.rename(columns={'index':'CharacteristicName'},inplace=True)
+    myids = ['CharacteristicName']
+    lu = lu.melt(
+        id_vars=myids
+        ,value_vars=[x for x in lu.columns if x not in myids]
+        ,var_name='method_identifier'
+        ,value_name='Characteristic_Name'
+        )
+    lu = lu[lu['Characteristic_Name'].isna()==False]
+    lu.reset_index(drop=True, inplace=True)
+    
+    # assign example['ResultAnalyticalMethod/MethodIdentifier'].unique() based on the lookup table
+    nrow=len(df)
+    ncol=len(df.columns)
+    df = pd.merge(left=df, right=lu, how='left', on='Characteristic_Name')
+    assert len(df) == nrow # sanity check
+    assert len(df.columns) == ncol+2 # sanity check
+
+    # crosswalk columns
+    wqp:pd.DataFrame = pd.DataFrame(columns=example.columns)
+
+    xwalk = {
+        'cols':{ # columns that have a 1:1 match between the NCRN dataframe and wqp; these determine nrow in the output wqp dataframe
+            #  colname from wqp : colname from df
+            'ActivityIdentifier':'activity_group_id'
+            ,'ActivityMediaSubdivisionName':'activity_group_id'
+            ,'ActivityStartDate':'activity_start_date'
+            ,'ActivityStartTime/Time':'activity_start_time'
+            ,'ActivityStartTime/TimeZoneCode':'timezone'
+            ,'MonitoringLocationIdentifier':'location_id'
+            ,'MonitoringLocationName':'ncrn_site_name'
+            ,'ActivityCommentText':'site_visit_notes'
+            ,'ActivityLocation/LatitudeMeasure':'ncrn_latitude'
+            ,'ActivityLocation/LongitudeMeasure':'ncrn_longitude'
+            ,'ResultDetectionConditionText':'data_quality_flag'
+            ,'CharacteristicName':'CharacteristicName'
+            ,'ResultMeasureValue':'str_result'
+            ,'ResultMeasure/MeasureUnitCode':'Result_Unit'
+            ,'ResultAnalyticalMethod/MethodIdentifier':'method_identifier'
+            ,'LaboratoryName':'lab'
+        }
+        ,'constants':{ # columns that are constants and need to repeat nrow times in the output wqp dataframe
+            # colname from wqp : value to assign to that column
+            'OrganizationIdentifier':'NCRN'
+            ,'OrganizationFormalName':'National Park Service Inventory and Monitoring Division'
+            ,'ActivityTypeCode':'Field Msr/Obs'
+            ,'ActivityMediaName':'Water'
+            ,'ActivityEndDate':np.NaN
+            ,'ActivityEndTime/Time':np.NaN
+            ,'ActivityEndTime/TimeZoneCode':None
+            ,'ActivityRelativeDepthName':None
+            ,'ActivityDepthHeightMeasure/MeasureValue':np.NaN
+            ,'ActivityDepthHeightMeasure/MeasureUnitCode':None
+            ,'ActivityDepthAltitudeReferencePointText':None
+            ,'ActivityTopDepthHeightMeasure/MeasureValue':np.NaN
+            ,'ActivityTopDepthHeightMeasure/MeasureUnitCode':None
+            ,'ActivityTopDepthHeightMeasure/MeasureUnitCode':None
+            ,'ActivityBottomDepthHeightMeasure/MeasureValue':np.NaN
+            ,'ActivityBottomDepthHeightMeasure/MeasureUnitCode':None
+            ,'ProjectIdentifier':'USNPS NCRN Perennial stream water monitoring'
+            ,'ProjectName':'USNPS NCRN Perennial stream water monitoring'
+            ,'ActivityConductingOrganizationText':'USNPS National Capital Region Inventory and Monitoring'
+            ,'SampleAquifer':None
+            ,'HydrologicCondition':None
+            ,'HydrologicEvent':None
+            ,'SampleCollectionMethod/MethodIdentifier':None
+            ,'SampleCollectionMethod/MethodIdentifierContext':None
+            ,'SampleCollectionMethod/MethodName':np.NaN
+            ,'SampleCollectionMethod/MethodDescriptionText':np.NaN
+            ,'SampleCollectionEquipmentName':None
+            ,'MethodSpeciationName':None
+            ,'ResultSampleFractionText':None
+            ,'MeasureQualifierCode':None
+            ,'ResultStatusIdentifier':'Final'
+            ,'StatisticalBaseCode':None
+            ,'ResultValueTypeName':'Actual'
+            ,'ResultWeightBasisText':None
+            ,'ResultTemperatureBasisText':None
+            ,'ResultParticleSizeBasisText':None
+            ,'DataQuality/PrecisionValue':np.NaN
+            ,'DataQuality/BiasValue':np.NaN
+            ,'DataQuality/ConfidenceIntervalValue':np.NaN
+            ,'DataQuality/UpperConfidenceLimitValue':np.NaN
+            ,'DataQuality/LowerConfidenceLimitValue':np.NaN
+            ,'ResultCommentText':None
+            ,'USGSPCode':None
+            ,'ResultDepthHeightMeasure/MeasureValue':np.NaN
+            ,'ResultDepthHeightMeasure/MeasureUnitCode':None
+            ,'ResultDepthAltitudeReferencePointText':None
+            ,'SubjectTaxonomicName':None # is NA for water but is not NA for BSS
+            ,'SampleTissueAnatomyName':None
+            ,'BinaryObjectFileName':None
+            ,'BinaryObjectFileTypeCode':None
+            ,'ResultFileUrl':None # TODO: update to data package?
+            ,'ResultAnalyticalMethod/MethodIdentifierContext':None
+            ,'ResultAnalyticalMethod/MethodName':None
+            ,'ResultAnalyticalMethod/MethodUrl':None
+            ,'ResultAnalyticalMethod/MethodDescriptionText':None
+            ,'AnalysisStartDate':np.NaN
+            ,'ResultLaboratoryCommentText':None
+            ,'ResultDetectionQuantitationLimitUrl':None
+            ,'DetectionQuantitationLimitTypeName':None
+            ,'DetectionQuantitationLimitMeasure/MeasureValue':np.NaN # TODO: update with real values
+            ,'DetectionQuantitationLimitMeasure/MeasureUnitCode':None
+            ,'LabSamplePreparationUrl':None
+            ,'LastUpdated':dt.datetime.now()
+            ,'ProviderName':'National Park Service Inventory and Monitoring Division'
+            ,'ResultTimeBasisText':None
+        }
+        ,'calculated':{ # columns that need to be re-calculated each time the dataset is produced
+            'ResultIdentifier':'wqp["ResultIdentifier"]=wqp.index'
+        }
+    }
+    assert len(xwalk['cols']) + len(xwalk['constants']) + len(xwalk['calculated']) == len(example.columns) # sanity check that the `xwalk`` is complete
+    # presentcols = []
+    # for k in xwalk.keys():
+    #     for x,y in xwalk[k].items():
+    #         presentcols.append(x)
+    # [x for x in example.columns if x not in presentcols]
+    
+    # assign based on xwalk
+    for k in xwalk.keys():
+        if k == 'cols':
+            for x,y in xwalk[k].items():
+                wqp[x] = df[y]
+        elif k == 'constants':
+            for x,y in xwalk[k].items():
+                wqp[x] = y
+        elif k == 'calculated':
+            for x, y in xwalk[k].items():
+                try:
+                    exec(y)
+                except:
+                    print(f"WARNING! Calculated column `xwalk['{k}']['{x}']`, code line `{y}` failed.")
+
+
+    # quality-control
+    # does wqp have the same number of rows as df?
+    # does wqp have the same columns as example? (ncol and colnames)
+    # do we have nulls in non-nullable fields?
+    # are our data quality flags uniform?
+
+    # write to csv if test_run == False
+
+    return wqp
 
 
 def _extract(newest_data_folder:str) -> dict:
