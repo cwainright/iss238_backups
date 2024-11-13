@@ -1,6 +1,6 @@
 from arcpy.da import TableToNumPyArray, ExtendTable
 from arcgis.gis import GIS
-from arcgis.features import FeatureLayerCollection
+from arcgis.features.layer import FeatureLayerCollection
 import arcpy
 import pandas as pd
 import numpy as np
@@ -167,11 +167,11 @@ def _download_csvs(newpath:str, verbose:bool, dir_ext:str) -> None:
 
     return None
 
-def _load_feature(csv_filepath:pd.DataFrame, target_itemid:str, verbose:bool) -> None:
+def _load_feature(csv_filepath:str, target_itemid:str, verbose:bool) -> None:
     """Loads a csv to a hosted feature layer in AGOL
 
     Args:
-        csv_filepath (pd.DataFrame): relative or absolute filepath to the csv you want to update the feature layer to
+        csv_filepath (str): relative or absolute filepath to the csv you want to update the feature layer to
         target_itemid (str): The AGOL itemid for the dashboard's backend hosted feature layer
 
     Returns:
