@@ -358,6 +358,7 @@ def _apply_data_types(tfm_tbl:pd.DataFrame) -> pd.DataFrame:
     lookup['tdn'] = ['float','mg/L']
     lookup['anc_method'] = ['string',None]
     lookup['stream_physical_appearance'] = ['string',None]
+    lookup['tape_offset'] = ['float','ft']
 
     # sanity checks so we keep the lookup table up-to-date
     for char in tfm_tbl.Characteristic_Name:
