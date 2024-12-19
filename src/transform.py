@@ -133,7 +133,10 @@ def _transform_tbl_ysi(tbl_ysi:pd.DataFrame, include_deletes:bool) -> pd.DataFra
     VALUE_COLS = [x for x in tbl_ysi.columns if x not in ID_COLS]
     tfm_tbl_ysi = tbl_ysi.melt(id_vars=ID_COLS, value_vars=VALUE_COLS, var_name='Characteristic_Name',value_name='Result_Text')
     tfm_tbl_ysi = pd.merge(tfm_tbl_ysi, lookup, on='GlobalID')
-    tfm_tbl_ysi = tfm_tbl_ysi[['GlobalID','ParentGlobalID','Characteristic_Name','Result_Text']]
+    for c in assets.FLAT_COLS:
+        if c not in tfm_tbl_ysi.columns:
+            tfm_tbl_ysi[c] = None
+    tfm_tbl_ysi = tfm_tbl_ysi[assets.FLAT_COLS]
     tfm_tbl_ysi = _apply_data_flags(tfm_tbl_ysi, tbl_ysi)
 
     return tfm_tbl_ysi
@@ -157,7 +160,10 @@ def _transform_tbl_main(tbl_main:pd.DataFrame, include_deletes:bool) -> pd.DataF
     VALUE_COLS = [x for x in tbl_main.columns if x not in ID_COLS]
     tfm_tbl_main = tbl_main.melt(id_vars=ID_COLS, value_vars=VALUE_COLS, var_name='Characteristic_Name',value_name='Result_Text')
     tfm_tbl_main['ParentGlobalID'] = tfm_tbl_main['GlobalID']
-    tfm_tbl_main = tfm_tbl_main[['GlobalID','ParentGlobalID','Characteristic_Name','Result_Text']]
+    for c in assets.FLAT_COLS:
+        if c not in tfm_tbl_main.columns:
+            tfm_tbl_main[c] = None
+    tfm_tbl_main = tfm_tbl_main[assets.FLAT_COLS]
     tfm_tbl_main = _apply_data_flags(tfm_tbl_main, tbl_main)
 
     return tfm_tbl_main
@@ -173,6 +179,7 @@ def _transform_tbl_grabsample(tbl_grabsample:pd.DataFrame, include_deletes:bool)
     excludes.extend(assets.SITE_VISIT_COLS)
     adds = [x for x in tbl_grabsample.columns if x.lower() not in excludes]
     MAIN_COLS.extend(adds)
+    ID_COLS.extend(['lab','anc_method'])
     lookup = tbl_grabsample[['GlobalID','ParentGlobalID']]
     
     # filter out soft-deleted records
@@ -184,7 +191,12 @@ def _transform_tbl_grabsample(tbl_grabsample:pd.DataFrame, include_deletes:bool)
     VALUE_COLS = [x for x in tbl_grabsample.columns if x not in ID_COLS]
     tfm_tbl_grabsample = tbl_grabsample.melt(id_vars=ID_COLS, value_vars=VALUE_COLS, var_name='Characteristic_Name',value_name='Result_Text')
     tfm_tbl_grabsample = pd.merge(tfm_tbl_grabsample, lookup, on='GlobalID')
-    tfm_tbl_grabsample = tfm_tbl_grabsample[['GlobalID','ParentGlobalID','Characteristic_Name','Result_Text']]
+    for c in assets.FLAT_COLS:
+        if c not in tfm_tbl_grabsample.columns:
+            tfm_tbl_grabsample[c] = None
+    tfm_tbl_grabsample = tfm_tbl_grabsample[assets.FLAT_COLS]
+    mask = (tfm_tbl_grabsample['lab']=='CUE') & (tfm_tbl_grabsample['Characteristic_Name']=='anc')
+    tfm_tbl_grabsample['anc_method'] = np.where(mask, tfm_tbl_grabsample['anc_method'], None)
     tfm_tbl_grabsample = _apply_data_flags(tfm_tbl_grabsample, tbl_grabsample)
 
     return tfm_tbl_grabsample
@@ -234,7 +246,7 @@ def _apply_data_flags(tfm_tbl:pd.DataFrame, tbl:pd.DataFrame) -> pd.DataFrame:
                 mask = (flags_lookup[col].astype(str).str.lower().str.contains('other')) & (flags_lookup[col].isna()==False)
                 flags_lookup[col] = np.where(mask, flags_lookup[othercol], flags_lookup[col])
             except:
-                print(f"FAIL: {col=}: {othercol=}")
+                print(f"FAIL: {col=}: {othercol=}") # sanity check; is the lookup table of "other" columns complete?
                 break
     for col in flags_lookup.columns:
         if 'other' in col:
