@@ -316,6 +316,7 @@ def wqp_wqx(test_run:bool=False, include_deletes:bool=False, verbose:bool=False)
         ,'entry_other_stream_phy_appear'
         ,'discharge_instrument'
         ,'ysi_probe'
+        ,'tape_offset'
     ]
     mask = (df['Characteristic_Name'].isin(excludes)==False)
     df = df[mask]
@@ -470,8 +471,8 @@ def wqp_wqx(test_run:bool=False, include_deletes:bool=False, verbose:bool=False)
     xwalk = {
         'cols':{ # columns that have a 1:1 match between the NCRN dataframe and wqp; these determine nrow in the output wqp dataframe
             #  colname from wqp : colname from df
-            'ActivityIdentifier':'activity_group_id'
-            ,'ActivityMediaSubdivisionName':'activity_group_id'
+            # 'ActivityIdentifier':'activity_group_id'
+            'ActivityMediaSubdivisionName':'activity_group_id'
             ,'ActivityStartDate':'activity_start_date'
             ,'ActivityStartTime/Time':'activity_start_time'
             ,'ActivityStartTime/TimeZoneCode':'timezone'
@@ -557,9 +558,14 @@ def wqp_wqx(test_run:bool=False, include_deletes:bool=False, verbose:bool=False)
         }
         ,'calculated':{ # columns that need to be re-calculated each time the dataset is produced
             'ResultIdentifier':'wqp["ResultIdentifier"]=wqp.index'
+            ,'ActivityIdentifier':'wqp["ActivityIdentifier"]=wqp["ActivityMediaSubdivisionName"]+"|"+wqp["ResultAnalyticalMethod/MethodIdentifier"]'
         }
     }
     assert len(xwalk['cols']) + len(xwalk['constants']) + len(xwalk['calculated']) == len(example.columns) # sanity check that the `xwalk`` is complete
+
+    # fix ActivityIdentifier; it requires a conditional so it's a hassle to include in the calculated columns of the xwalk
+    mask = (wqp['ResultAnalyticalMethod/MethodIdentifier']=='NCRN_WQ_YSI')
+
     # presentcols = []
     # for k in xwalk.keys():
     #     for x,y in xwalk[k].items():
@@ -587,6 +593,7 @@ def wqp_wqx(test_run:bool=False, include_deletes:bool=False, verbose:bool=False)
     # does wqp have the same columns as example? (ncol and colnames)
     # do we have nulls in non-nullable fields?
     # are our data quality flags uniform?
+    # did we ever report 0 (or a negative number) as the result for nutrients? TN, TP, ammonia, etc. probably should change those to NA and update their flag to p<QL
 
     # write to csv if test_run == False
 
