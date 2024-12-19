@@ -300,13 +300,19 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
             print(f'`dashboard_etl()` completed. Elapsed time: {elapsed_time}')
         return True
 
-def wqp_wqx(test_run:bool=False, include_deletes:bool=False, verbose:bool=False) -> pd.DataFrame:
+def wqp_wqx(test_run:bool=False, verbose:bool=False) -> pd.DataFrame:
+    
+    include_deletes:bool=False
+    
     # Extract steps
     newest_data_folder:str = _find_newest_folder(assets.DM_WATER_BACKUP_FPATH) # find the newest timestamp folder
     df_dict:dict = _extract(newest_data_folder) # extract csvs to dataframes
     
     # Transform steps
     df:pd.DataFrame = tf._transform(df_dict=df_dict, include_deletes=include_deletes)
+
+    # exclude unverified and review-in-progress records
+    df = df[df['review_status']=='verified']
 
     excludes = [
         'left_bank_riparian_width'
@@ -323,6 +329,23 @@ def wqp_wqx(test_run:bool=False, include_deletes:bool=False, verbose:bool=False)
     mask = (df['Characteristic_Name'].isin(excludes)==False)
     df = df[mask]
     df.reset_index(inplace=True, drop=True)
+
+
+
+    # assign the activity id
+    df['activity_id'] = None
+    lu = {}
+    for y in [x for x in df.grouping_var.unique() if str(x) != 'None']:
+        lu[y] = None
+    for k,v in lu.items():
+        assert v is not None
+
+    df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_HABINV', df['activity_group_id']+'|'+df['grouping_var'], df['activity_id'])
+    df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_WQUANTITY', df['activity_group_id']+'|'+df['grouping_var'], df['activity_id'])
+    df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_WQUALITY', df['activity_group_id']+'|'+df['grouping_var']+'|'+df['ysi_probe']+'|'+df['ysi_increment'], df['activity_id'])
+    df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_WCHEM', df['activity_group_id']+'|'+df['grouping_var']+'|'+df['lab'], df['activity_id'])
+
+
 
     # import the example file
     example:pd.DataFrame = pd.read_csv(assets.EXAMPLE_WQX_WQP, nrows=1)
@@ -561,7 +584,7 @@ def wqp_wqx(test_run:bool=False, include_deletes:bool=False, verbose:bool=False)
         }
         ,'calculated':{ # columns that need to be re-calculated each time the dataset is produced
             'ResultIdentifier':'wqp["ResultIdentifier"]=wqp.index'
-            ,'ActivityIdentifier':'wqp["ActivityIdentifier"]=wqp["ActivityMediaSubdivisionName"]+"|"+wqp["ResultAnalyticalMethod/MethodIdentifier"]'
+            # ,'ActivityIdentifier':'wqp["ActivityIdentifier"]=wqp["ActivityMediaSubdivisionName"]+"|"+wqp["ResultAnalyticalMethod/MethodIdentifier"]'
         }
     }
     assert len(xwalk['cols']) + len(xwalk['constants']) + len(xwalk['calculated']) == len(example.columns) # sanity check that the `xwalk`` is complete
