@@ -178,13 +178,14 @@ def _transform_tbl_main(tbl_main:pd.DataFrame, include_deletes:bool) -> pd.DataF
             ,'photos_y_n'
             ,'weather_condition'
         ]
-        ,'NCRN_WQ_WQUANITY':[
+        ,'NCRN_WQ_WQUANTITY':[
             'discharge'
             ,'mean_velocity'
             ,'mean_crossection_depth'
             ,'flowtracker_notes'
             ,'wetted_width'
             ,'tape_offset'
+            ,'discharge_instrument'
         ]
     }
     for c in tfm_tbl_main.Characteristic_Name.unique():
