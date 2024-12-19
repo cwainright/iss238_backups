@@ -134,6 +134,7 @@ def _transform_tbl_ysi(tbl_ysi:pd.DataFrame, include_deletes:bool) -> pd.DataFra
     VALUE_COLS = [x for x in tbl_ysi.columns if x not in ID_COLS]
     tfm_tbl_ysi = tbl_ysi.melt(id_vars=ID_COLS, value_vars=VALUE_COLS, var_name='Characteristic_Name',value_name='Result_Text')
     tfm_tbl_ysi = pd.merge(tfm_tbl_ysi, lookup, on='GlobalID')
+    tfm_tbl_ysi['grouping_var'] = 'NCRN_WQ_WQUALITY'
     for c in assets.FLAT_COLS:
         if c not in tfm_tbl_ysi.columns:
             tfm_tbl_ysi[c] = None
@@ -161,6 +162,35 @@ def _transform_tbl_main(tbl_main:pd.DataFrame, include_deletes:bool) -> pd.DataF
     VALUE_COLS = [x for x in tbl_main.columns if x not in ID_COLS]
     tfm_tbl_main = tbl_main.melt(id_vars=ID_COLS, value_vars=VALUE_COLS, var_name='Characteristic_Name',value_name='Result_Text')
     tfm_tbl_main['ParentGlobalID'] = tfm_tbl_main['GlobalID']
+    tfm_tbl_main['grouping_var'] = None
+
+    # add the grouping variable
+    lu = {
+        'NCRN_WQ_HABINV':[
+            'air_temperature'
+            ,'algae_cover_percent'
+            ,'algae_description'
+            ,'stream_physical_appearance'
+            ,'flow_status'
+            ,'sampleability'
+            ,'visit_type'
+            ,'rain_last_24'
+            ,'photos_y_n'
+            ,'weather_condition'
+        ]
+        ,'NCRN_WQ_WQUANITY':[
+            'discharge'
+            ,'mean_velocity'
+            ,'mean_crossection_depth'
+            ,'flowtracker_notes'
+        ]
+    }
+    for c in tfm_tbl_main.Characteristic_Name.unique():
+        for k,v in lu.items():
+            if c in v:
+                mask = (tfm_tbl_main['Characteristic_Name']==c)
+                tfm_tbl_main['grouping_var'] = np.where(mask, k, tfm_tbl_main['grouping_var'])
+
     for c in assets.FLAT_COLS:
         if c not in tfm_tbl_main.columns:
             tfm_tbl_main[c] = None
@@ -192,6 +222,7 @@ def _transform_tbl_grabsample(tbl_grabsample:pd.DataFrame, include_deletes:bool)
     VALUE_COLS = [x for x in tbl_grabsample.columns if x not in ID_COLS]
     tfm_tbl_grabsample = tbl_grabsample.melt(id_vars=ID_COLS, value_vars=VALUE_COLS, var_name='Characteristic_Name',value_name='Result_Text')
     tfm_tbl_grabsample = pd.merge(tfm_tbl_grabsample, lookup, on='GlobalID')
+    tfm_tbl_grabsample['grouping_var'] = 'NCRN_WQ_WCHEM'
     for c in assets.FLAT_COLS:
         if c not in tfm_tbl_grabsample.columns:
             tfm_tbl_grabsample[c] = None
@@ -505,7 +536,7 @@ def _gather_others(tfl_tbl:pd.DataFrame) -> pd.DataFrame:
         if others[i] == 'other_location_name':
             r = 'ncrn_site_name' # exception
         else:
-            r = r = roots[i]
+            r = roots[i]
         lu[others[i]] = {'entry':entries[i], 'other':others[i], 'root':r}
 
     for k,v in lu.items():
