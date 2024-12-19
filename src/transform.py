@@ -122,6 +122,7 @@ def _transform_tbl_ysi(tbl_ysi:pd.DataFrame, include_deletes:bool) -> pd.DataFra
     excludes.extend(assets.SITE_VISIT_COLS)
     adds = [x for x in tbl_ysi.columns if x.lower() not in excludes]
     MAIN_COLS.extend(adds)
+    ID_COLS.extend(['ysi_increment','ysi_probe'])
     lookup = tbl_ysi[['GlobalID','ParentGlobalID']]
 
     # filter out soft-deleted records
