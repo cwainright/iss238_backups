@@ -183,6 +183,8 @@ def _transform_tbl_main(tbl_main:pd.DataFrame, include_deletes:bool) -> pd.DataF
             ,'mean_velocity'
             ,'mean_crossection_depth'
             ,'flowtracker_notes'
+            ,'wetted_width'
+            ,'tape_offset'
         ]
     }
     for c in tfm_tbl_main.Characteristic_Name.unique():
