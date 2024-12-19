@@ -272,6 +272,8 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
     
     # Transform steps
     df:pd.DataFrame = tf._transform(df_dict=df_dict, include_deletes=include_deletes)
+    dashboard_cols = pd.read_csv(r'data\ncrn_discrete_water_dashboard_be_20240822.csv', nrows=5).columns
+    df = df[dashboard_cols]
     
     # QC checks
     if verbose == True:
