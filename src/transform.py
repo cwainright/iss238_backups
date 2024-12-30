@@ -44,7 +44,7 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     df = df.reset_index(drop=True)
 
     # assign activity_id
-    df = _assign_activity_id(df=df)
+    # df = _assign_activity_id(df=df)
 
     return df
 
@@ -78,12 +78,15 @@ def _assign_activity_id(df:pd.DataFrame) -> pd.DataFrame:
             problems.append(x)
     assert len(problems)==0, print(f'{len(problems)} `grouping_var` values are present in `_assign_activity_id().LOOKUP` but absent from the dataframe:\n\n{problems}')
 
+    # if we pass all of the above checks, assign the `activity_id`
     df['activity_id'] = None
     df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_HABINV', df['activity_group_id']+'|'+df['grouping_var'], df['activity_id'])
     df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_WQUANTITY', df['activity_group_id']+'|'+df['grouping_var'], df['activity_id'])
     df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_WQUALITY', df['activity_group_id']+'|'+df['grouping_var']+'|'+df['ysi_probe']+'|'+df['ysi_increment'], df['activity_id'])
     df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_WCHEM', df['activity_group_id']+'|'+df['grouping_var']+'|'+df['lab'], df['activity_id'])
 
+    # every row in df should receive an `activity_id` without any exceptions
+    # any None value represents a problem, and the pipeline should stop
     problems = df[df['activity_id'].isna()]
     if len(problems) > 0:
         for x in problems.grouping_var.unique():
