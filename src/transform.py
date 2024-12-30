@@ -50,7 +50,45 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
 
 def _assign_activity_id(df:pd.DataFrame) -> pd.DataFrame:
 
+    # fail if any characteristics/results do not have a `grouping_var` assigned
+    problems = df[df['grouping_var'].isna()]
+    if len(problems) > 0:
+        for x in problems.Characteristic_Name.unique():
+            print(f'ERROR: `Characteristic_Name` has not been assigned a `grouping_var`: {x}')
+    assert (len(problems)) == 0, print(f'{len(problems)} rows in the dataframe have not been assigned a `grouping_var`')
 
+    LOOKUP = [
+        # hard-coding `activity_id` based on `grouping_var` fails when the values present in `grouping_var` are different than expected
+        # so we have to check that the values present in the dataframe are equal to the ones we expect before assigning `activity_id`
+        'NCRN_WQ_HABINV'
+        ,'NCRN_WQ_WQUANTITY'
+        ,'NCRN_WQ_WQUALITY'
+        ,'NCRN_WQ_WCHEM'
+    ]
+    # check that values present in the df are present in the lookup
+    problems = []
+    for x in df.grouping_var.unique():
+        if x not in LOOKUP:
+            problems.append(x)
+    assert len(problems)==0, print(f'{len(problems)} `grouping_var` values are present in the dataframe but absent from `_assign_activity_id().LOOKUP`:\n\n{problems}')
+    # check that values present in the lookup are present in the df
+    problems = []
+    for x in LOOKUP:
+        if x not in df.grouping_var.unique():
+            problems.append(x)
+    assert len(problems)==0, print(f'{len(problems)} `grouping_var` values are present in `_assign_activity_id().LOOKUP` but absent from the dataframe:\n\n{problems}')
+
+    df['activity_id'] = None
+    df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_HABINV', df['activity_group_id']+'|'+df['grouping_var'], df['activity_id'])
+    df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_WQUANTITY', df['activity_group_id']+'|'+df['grouping_var'], df['activity_id'])
+    df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_WQUALITY', df['activity_group_id']+'|'+df['grouping_var']+'|'+df['ysi_probe']+'|'+df['ysi_increment'], df['activity_id'])
+    df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_WCHEM', df['activity_group_id']+'|'+df['grouping_var']+'|'+df['lab'], df['activity_id'])
+
+    problems = df[df['activity_id'].isna()]
+    if len(problems) > 0:
+        for x in problems.grouping_var.unique():
+            print(f'ERROR: `grouping_var` failed to assign an `activity_id`: {x}')
+    assert len(problems)==0, print(f'{len(problems)} `activity_id` failed to assign in {len(problems)} rows`. Resolve this problem by fixing the `activity_id` assignment logic in `transform._assign_activity_id()`')
 
     return df
 
