@@ -330,6 +330,8 @@ def wqp_wqx(test_run:bool=False, verbose:bool=False) -> pd.DataFrame:
     df = df[mask]
     df.reset_index(inplace=True, drop=True)
 
+    df = tf._assign_activity_id(df=df)
+
     # import the example file
     example:pd.DataFrame = pd.read_csv(assets.EXAMPLE_WQX_WQP, nrows=1)
     if 'Unnamed: 0' in example.columns:
@@ -341,8 +343,8 @@ def wqp_wqx(test_run:bool=False, verbose:bool=False) -> pd.DataFrame:
     xwalk = {
         'cols':{ # columns that have a 1:1 match between the NCRN dataframe and wqp; these determine nrow in the output wqp dataframe
             #  colname from wqp : colname from df
-            # 'ActivityIdentifier':'activity_group_id'
-            'ActivityMediaSubdivisionName':'activity_group_id'
+            'ActivityIdentifier':'activity_id'
+            ,'ActivityMediaSubdivisionName':'activity_group_id'
             ,'ActivityStartDate':'activity_start_date'
             ,'ActivityStartTime/Time':'activity_start_time'
             ,'ActivityStartTime/TimeZoneCode':'timezone'
@@ -352,10 +354,10 @@ def wqp_wqx(test_run:bool=False, verbose:bool=False) -> pd.DataFrame:
             ,'ActivityLocation/LatitudeMeasure':'ncrn_latitude'
             ,'ActivityLocation/LongitudeMeasure':'ncrn_longitude'
             ,'ResultDetectionConditionText':'data_quality_flag'
-            ,'CharacteristicName':'CharacteristicName'
+            ,'CharacteristicName':'Characteristic_Name'
             ,'ResultMeasureValue':'str_result'
             ,'ResultMeasure/MeasureUnitCode':'Result_Unit'
-            ,'ResultAnalyticalMethod/MethodIdentifier':'method_identifier'
+            ,'ResultAnalyticalMethod/MethodIdentifier':'grouping_var'
             ,'LaboratoryName':'lab'
         }
         ,'constants':{ # columns that are constants and need to repeat nrow times in the output wqp dataframe
@@ -433,31 +435,27 @@ def wqp_wqx(test_run:bool=False, verbose:bool=False) -> pd.DataFrame:
     }
     assert len(xwalk['cols']) + len(xwalk['constants']) + len(xwalk['calculated']) == len(example.columns) # sanity check that the `xwalk`` is complete
 
-    # fix ActivityIdentifier; it requires a conditional so it's a hassle to include in the calculated columns of the xwalk
-    mask = (wqp['ResultAnalyticalMethod/MethodIdentifier']=='NCRN_WQ_YSI')
-
-    # presentcols = []
-    # for k in xwalk.keys():
-    #     for x,y in xwalk[k].items():
-    #         presentcols.append(x)
-    # [x for x in example.columns if x not in presentcols]
-    
     # assign based on xwalk
     for k in xwalk.keys():
         if k == 'cols':
             for x,y in xwalk[k].items():
-                wqp[x] = df[y]
+                try:
+                    wqp[x] = df[y]
+                except:
+                    print(f'failed: {x=} and {y=}')
         elif k == 'constants':
             for x,y in xwalk[k].items():
-                wqp[x] = y
+                try:
+                    wqp[x] = y
+                except:
+                    print(f'failed: {x=} and {y=}')
         elif k == 'calculated':
             for x, y in xwalk[k].items():
                 try:
                     exec(y)
                 except:
                     print(f"WARNING! Calculated column `xwalk['{k}']['{x}']`, code line `{y}` failed.")
-
-
+    
     # quality-control
     # does wqp have the same number of rows as df?
     # does wqp have the same columns as example? (ncol and colnames)

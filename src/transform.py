@@ -44,7 +44,7 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     df = df.reset_index(drop=True)
 
     # assign activity_id
-    # df = _assign_activity_id(df=df)
+    # df = _assign_activity_id(df=df) # this only makes sense for verified records
 
     return df
 
@@ -56,6 +56,13 @@ def _assign_activity_id(df:pd.DataFrame) -> pd.DataFrame:
         for x in problems.Characteristic_Name.unique():
             print(f'ERROR: `Characteristic_Name` has not been assigned a `grouping_var`: {x}')
     assert (len(problems)) == 0, print(f'{len(problems)} rows in the dataframe have not been assigned a `grouping_var`')
+
+    # fail if any characteristics/results do not have a `activity_group_id` assigned
+    problems = df[df['activity_group_id'].isna()]
+    if len(problems) > 0:
+        for x in problems.activity_group_id.unique():
+            print(f'ERROR: `activity_group_id` has not been assigned: {x}')
+    assert (len(problems)) == 0, print(f'{len(problems)} rows in the dataframe have not been assigned a `activity_group_id`')
 
     LOOKUP = [
         # hard-coding `activity_id` based on `grouping_var` fails when the values present in `grouping_var` are different than expected
@@ -79,14 +86,24 @@ def _assign_activity_id(df:pd.DataFrame) -> pd.DataFrame:
     assert len(problems)==0, print(f'{len(problems)} `grouping_var` values are present in `_assign_activity_id().LOOKUP` but absent from the dataframe:\n\n{problems}')
 
     # if we pass all of the above checks, assign the `activity_id`
-    df['activity_id'] = None
-    df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_HABINV', df['activity_group_id']+'|'+df['grouping_var'], df['activity_id'])
-    df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_WQUANTITY', df['activity_group_id']+'|'+df['grouping_var'], df['activity_id'])
-    df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_WQUALITY', df['activity_group_id']+'|'+df['grouping_var']+'|'+df['ysi_probe']+'|'+df['ysi_increment'], df['activity_id'])
-    df['activity_id'] = np.where(df['grouping_var']=='NCRN_WQ_WCHEM', df['activity_group_id']+'|'+df['grouping_var']+'|'+df['lab'], df['activity_id'])
+    df['activity_id'] = df['activity_group_id']+'|'+df['grouping_var'] # base case
+
+    mask = (df['grouping_var']=='NCRN_WQ_HABINV') # i.e., site observations
+    df['activity_id'] = np.where(mask, df['activity_group_id']+'|'+df['grouping_var'], df['activity_id'])
+
+    mask = (df['grouping_var']=='NCRN_WQ_WQUANTITY') # i.e., flowtracker characteristics
+    df['activity_id'] = np.where(mask, df['activity_group_id']+'|'+df['grouping_var'], df['activity_id'])
+
+    mask = (df['grouping_var']=='NCRN_WQ_WQUALITY') & (df['sampleability']=='Actively Sampled') & (df['ysi_probe'].isna()==False) & (df['ysi_increment'].isna()==False) # i.e., ysi characteristics
+    df['activity_id'] = np.where(mask, df['activity_group_id']+'|'+df['grouping_var']+'|'+df['ysi_probe']+'|'+df['ysi_increment'], df['activity_id'])
+
+    mask = (df['grouping_var']=='NCRN_WQ_WCHEM') & (df['sampleability']=='Actively Sampled') & (df['lab'].isna()==False) # i.e., lab results
+    df['activity_id'] = np.where(mask, df['activity_group_id']+'|'+df['grouping_var']+'|'+df['lab'], df['activity_id'])
 
     # every row in df should receive an `activity_id` without any exceptions
-    # any None value represents a problem, and the pipeline should stop
+    # `activity_id` resolves to None when any part of the concatenation is None
+    # any None value is a problem, and the pipeline should stop
+    # None values usually come from things that were left blank in the Survey that shouldn't be blank (e.g., overriding)
     problems = df[df['activity_id'].isna()]
     if len(problems) > 0:
         for x in problems.grouping_var.unique():
