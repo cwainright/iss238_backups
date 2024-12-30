@@ -446,6 +446,7 @@ def _df_qc(df:pd.DataFrame) -> pd.DataFrame:
 
     # exclude unverified and review-in-progress records
     df = df[df['review_status']=='verified']
+    df.reset_index(inplace=True, drop=True)
 
     excludes = [
         'left_bank_riparian_width'
@@ -464,9 +465,20 @@ def _df_qc(df:pd.DataFrame) -> pd.DataFrame:
     df.reset_index(inplace=True, drop=True)
 
     # are our data quality flags uniform?
-    # TODO: did we ever report 0 (or a negative number) as the result for nutrients? TN, TP, ammonia, etc. probably should change those to NA and update their flag to p<QL
-    # TODO: filter flags ['equipment_malfunction','p<ql']
-    # TODO: filter out calculated values
+    # did we ever report 0 (or a negative number) as the result for nutrients? TN, TP, ammonia, etc. probably should change those to NA and update their flag to p<QL
+    mask = (df['num_result']<0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect'])==False) & (df['Characteristic_Name'].isin(['air_temperature','water_temperature'])==False)
+    problems = df[mask]
+    if len(problems) > 0:
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} activity_group_ids had `num_result` < 0 but were not flagged nondetect or p<ql E.g.,')
+        for x in problems.activity_group_id.unique()[:2]:
+            mask = (problems['activity_group_id']==x)
+            print(problems[mask][['activity_group_id','record_reviewers','review_date','Characteristic_Name','num_result','data_quality_flag']])
+
+    # TODO: compare flags against known-correct flags so we don't export "other" entries
+    # FLAGS = [ # A list of known-acceptable flags
+
+    # ] 
+    # mask = (df['data_quality_flag'].isin(FLAGS)==False)
 
     return df
 
