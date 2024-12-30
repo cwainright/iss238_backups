@@ -50,7 +50,7 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
 
 def _assign_activity_id(df:pd.DataFrame) -> pd.DataFrame:
 
-    
+
 
     return df
 
@@ -186,6 +186,9 @@ def _transform_tbl_main(tbl_main:pd.DataFrame, include_deletes:bool) -> pd.DataF
             ,'rain_last_24'
             ,'photos_y_n'
             ,'weather_condition'
+            ,'left_bank_riparian_width'
+            ,'right_bank_riparian_width'
+            ,'entry_other_stream_phy_appear'
         ]
         ,'NCRN_WQ_WQUANTITY':[
             'discharge'
