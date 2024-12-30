@@ -310,26 +310,7 @@ def wqp_wqx(test_run:bool=False, verbose:bool=False) -> pd.DataFrame:
     
     # Transform steps
     df:pd.DataFrame = tf._transform(df_dict=df_dict, include_deletes=include_deletes)
-
-    # exclude unverified and review-in-progress records
-    df = df[df['review_status']=='verified']
-
-    excludes = [
-        'left_bank_riparian_width'
-        ,'right_bank_riparian_width'
-        ,'duplicate_y_n'
-        ,'nutrient_bottle_size'
-        ,'anc_bottle_size'
-        # ,'ysi_increment_distance'
-        ,'entry_other_stream_phy_appear'
-        ,'discharge_instrument'
-        ,'ysi_probe'
-        # ,'tape_offset'
-    ]
-    mask = (df['Characteristic_Name'].isin(excludes)==False)
-    df = df[mask]
-    df.reset_index(inplace=True, drop=True)
-
+    df = _df_qc(df=df)
     df = tf._assign_activity_id(df=df)
 
     # import the example file
@@ -456,19 +437,38 @@ def wqp_wqx(test_run:bool=False, verbose:bool=False) -> pd.DataFrame:
                 except:
                     print(f"WARNING! Calculated column `xwalk['{k}']['{x}']`, code line `{y}` failed.")
     
-    # quality-control
-    # does wqp have the same number of rows as df?
-    # does wqp have the same columns as example? (ncol and colnames)
-    # do we have nulls in non-nullable fields?
-    # are our data quality flags uniform?
-    # TODO: did we ever report 0 (or a negative number) as the result for nutrients? TN, TP, ammonia, etc. probably should change those to NA and update their flag to p<QL
-    # TODO: filter flags ['equipment_malfunction','p<ql']
-    # # TODO: filter out calculated values
-
     # write to csv if test_run == False
 
     return wqp
 
+
+def _df_qc(df:pd.DataFrame) -> pd.DataFrame:
+
+    # exclude unverified and review-in-progress records
+    df = df[df['review_status']=='verified']
+
+    excludes = [
+        'left_bank_riparian_width'
+        ,'right_bank_riparian_width'
+        ,'duplicate_y_n'
+        ,'nutrient_bottle_size'
+        ,'anc_bottle_size'
+        # ,'ysi_increment_distance'
+        ,'entry_other_stream_phy_appear'
+        ,'discharge_instrument'
+        ,'ysi_probe'
+        # ,'tape_offset'
+    ]
+    mask = (df['Characteristic_Name'].isin(excludes)==False)
+    df = df[mask]
+    df.reset_index(inplace=True, drop=True)
+
+    # are our data quality flags uniform?
+    # TODO: did we ever report 0 (or a negative number) as the result for nutrients? TN, TP, ammonia, etc. probably should change those to NA and update their flag to p<QL
+    # TODO: filter flags ['equipment_malfunction','p<ql']
+    # TODO: filter out calculated values
+
+    return df
 
 def _extract(newest_data_folder:str) -> dict:
     """Call-stacking function for extract steps
