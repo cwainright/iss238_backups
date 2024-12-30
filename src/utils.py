@@ -43,13 +43,13 @@ import pandas as pd
 import time
 import numpy as np
 
-def backup_water(dest_dir:str=assets.DM_WATER_BACKUP_FPATH, verbose:bool=False, test_run:bool=False) -> None:
+def backup_water(dest_dir:str=assets.DM_WATER_BACKUP_FPATH, verbose:bool=False, test_run:bool=True) -> None:
     """Generic to make backups of NCRN water source files
 
     Args:
         dest_dir (str, optional): Absolute or relative filepath to receive the backup files. Defaults to assets.DM_WATER_BACKUP_FPATH.
         verbose (bool, optional): True turns on interactive messaging. Defaults to False.
-        test_run (bool, optional): True points to development source files, False points to production. Defaults to False.
+        test_run (bool, optional): True makes a backup of source files and csvs (about 25 sec); False makes a backup of source files, csvs, and filegeodatabase (about 8 min). Defaults to True.
 
     Returns:
         None
@@ -71,10 +71,7 @@ def backup_water(dest_dir:str=assets.DM_WATER_BACKUP_FPATH, verbose:bool=False, 
     # wtb._download_csvs(newpath=newpath, verbose=verbose, dir_ext=dir_ext)
 
     # copy the survey source-files
-    if test_run==True:
-        dirs=assets.SURVEY_DEV_DIRS
-    else:
-        dirs=assets.SURVEY_SOURCE_DIRS
+    dirs=assets.SURVEY_SOURCE_DIRS
     for d in dirs:
         try:
             # _backup_make_file_copies(src_dir=d, dest_dir=dest_dir, filetypes=['*'], verbose=verbose)
@@ -86,11 +83,9 @@ def backup_water(dest_dir:str=assets.DM_WATER_BACKUP_FPATH, verbose:bool=False, 
 
     # download a copy of the hosted feature (for 1:1 restoration)
     if test_run==True:
-        src = assets.WATER_DEV_ITEM_ID
+        wtb._agol_hosted_feature(newpath=newpath, in_fc=assets.WATER_AGOL_ITEM_ID, verbose=verbose, dir_ext=dir_ext, download_types=['CSV'])
     else:
-        src = assets.WATER_AGOL_ITEM_ID
-    # newpath:str = _make_new_backup_dir(dest_dir=dest_dir, verbose=verbose, dir_ext=dir_ext)
-    wtb._agol_hosted_feature(newpath=newpath, in_fc=src, verbose=verbose, dir_ext=dir_ext)
+        wtb._agol_hosted_feature(newpath=newpath, in_fc=assets.WATER_AGOL_ITEM_ID, verbose=verbose, dir_ext=dir_ext, download_types=['CSV','File Geodatabase'])
     
     # TODO: take the latest verified records, replace their counterparts in the wqx for dan et al
     # wqp_wqx()
