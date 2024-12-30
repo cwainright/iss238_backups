@@ -619,7 +619,9 @@ def wqp_wqx(test_run:bool=False, verbose:bool=False) -> pd.DataFrame:
     # does wqp have the same columns as example? (ncol and colnames)
     # do we have nulls in non-nullable fields?
     # are our data quality flags uniform?
-    # did we ever report 0 (or a negative number) as the result for nutrients? TN, TP, ammonia, etc. probably should change those to NA and update their flag to p<QL
+    # TODO: did we ever report 0 (or a negative number) as the result for nutrients? TN, TP, ammonia, etc. probably should change those to NA and update their flag to p<QL
+    # TODO: filter flags ['equipment_malfunction','p<ql']
+    # # TODO: filter out calculated values
 
     # write to csv if test_run == False
 
