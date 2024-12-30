@@ -43,6 +43,15 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     df = df[mask]
     df = df.reset_index(drop=True)
 
+    # assign activity_id
+    df = _assign_activity_id(df=df)
+
+    return df
+
+def _assign_activity_id(df:pd.DataFrame) -> pd.DataFrame:
+
+    
+
     return df
 
 def _soft_constraints(df:pd.DataFrame) -> pd.DataFrame:
