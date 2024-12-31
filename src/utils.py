@@ -461,7 +461,7 @@ def _df_qc(df:pd.DataFrame) -> pd.DataFrame:
 
     # are our data quality flags uniform?
     # did we ever report 0 (or a negative number) as the result for nutrients? TN, TP, ammonia, etc. probably should change those to NA and update their flag to p<QL
-    mask = (df['num_result']<0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect'])==False) & (df['Characteristic_Name'].isin(['air_temperature','water_temperature'])==False)
+    mask = (df['num_result']<=0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect'])==False) & (df['Characteristic_Name'].isin(['air_temperature','water_temperature'])==False)
     problems = df[mask]
     if len(problems) > 0:
         print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} activity_group_ids had `num_result` < 0 but were not flagged nondetect or p<ql E.g.,')
@@ -474,6 +474,10 @@ def _df_qc(df:pd.DataFrame) -> pd.DataFrame:
 
     # ] 
     # mask = (df['data_quality_flag'].isin(FLAGS)==False)
+
+    # TODO:warn when C, TDS, sal are reported <2007 as YSI 100, they need to be moved to a results-were-calculated increment and blanked-out in the YSI100 increment
+    # TODO: warn when a flag has a result missing or permanently missing flag but there's a result present
+    # TODO: warn when a result is missing but it has no flag
 
     return df
 
