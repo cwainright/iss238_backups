@@ -699,10 +699,7 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
                 except:
                     print(f'Failed to print warnings for {c}')
 
-    # # if `data_type` == 'float', the following fields are non-nullable
-    #     [
-    #         'Result_Unit'
-    #     ]
+    # warn if non-nullable fields are null
     non_nullables = ['Result_Unit']
     for c in non_nullables:
         mask = (df['data_type']=='float') & (df[c].isna())
@@ -815,10 +812,33 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
             for x in problems.activity_group_id.unique()[:10]:
                 mask = (problems['activity_group_id']==x)
                 print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
-    # TODO: warn when a result is missing but it has no flag
-
+    
+    # warn when a result is missing but it has no flag
     statuses = ['verified']
-    mask = (df['review_status'].isin(statuses)) & (df['Result_Text'].isna()) & (df['grouping_var']=='NCRN_WQ_WQUALITY') & (df['ysi_probe'].isna()==False)
+    MISSING_FLAGS = [
+        'not_on_datasheet'
+        ,'permanently_missing'
+    ]
+    GROUPING_VARS = [
+        'NCRN_WQ_WQUANTITY'
+        ,'NCRN_WQ_WQUALITY'
+        ,'NCRN_WQ_WCHEM'
+    ]
+    mask = (df['review_status'].isin(statuses)) & (df['num_result'].isna()) & (df['data_quality_flag'].isin(MISSING_FLAGS)==False) & (df['grouping_var'].isin(GROUPING_VARS)) & (df['data_type']=='float')
+    problems = df[mask].copy()
+    if len(problems) > 0:
+        print("--------------------------------------------------------------------------------")
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had NA result and the result was not flagged in ["not_on_datasheet","permanently_missing"].\nResolve these warnings by updating the flag or the result in S123\nE.g.,')
+        mycols = ['activity_group_id','sampleability','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']
+        if len(problems) < 100:
+            for x in problems.activity_group_id.unique():
+                mask = (problems['activity_group_id']==x)
+                print(problems[mask][mycols])
+        else:
+            print(f'There are {len(problems)} warnings. Printing the first 4 site visits...')
+            for x in problems.activity_group_id.unique()[:4]:
+                mask = (problems['activity_group_id']==x)
+                print(problems[mask][mycols])
 
     # check ysi entries against list of known-acceptable probes
     PROBES = [
