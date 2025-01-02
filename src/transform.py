@@ -641,6 +641,9 @@ def _cast_result_by_type(tfl_tbl:pd.DataFrame) -> pd.DataFrame:
 def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     """Enforce business logic to quality-control the output of the pipeline"""
 
+    # hard-code project name
+    df['project_id'] = 'Perennial stream water monitoring'
+
     nullables = [# columns that are nullable for all rows
         'paper_url1' # should be present for most records before 2018, but field will be blank until user reviews the record (reviewing the record triggers the logic that populates the field from the lookup table)
         ,'paper_url2' # will be NA for nearly all rows
@@ -651,15 +654,14 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     non_nullables = [x for x in df.columns if x not in nullables]
     for c in non_nullables:
         if df[c].isna().all():
-            print("")
+            print("--------------------------------------------------------------------------------")
             print(f'WARNING (a): non-nullable field `{c}` is null in all rows')
             print("")
-
 
     # business rule-checking logic
     # if `review_status` IN ['verified', 'in_review'], the following fields are non-nullable
 
-    statuses = ['verified', 'in_review']
+    statuses = ['verified']
     non_nullables = [
             'record_reviewers'
             ,'review_date'
@@ -681,11 +683,21 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
 
     for c in non_nullables:
         mask = (df['review_status'].isin(statuses)) & (df[c].isna()) & (df['delete_record'].isna()==False) & (df['delete_record']!='yes')
-        if len(df[mask]) >0:
-                print("")
-                print(f'WARNING (b): non-nullable field `{c}` is null in {round(((len(df[mask]))/len(df)*100),2)}% of rows')
-                print("")
-
+        problems = df[mask]
+        if len(problems) >0:
+                print("--------------------------------------------------------------------------------")
+                print(f'WARNING (b): non-nullable field `{c}` is null in {round(((len(problems))/len(df)*100),2)}% of rows of verified records')
+                print('Resolve these warnings by assigning a value to this column\nE.g.,')
+                try:
+                    mycols = ['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']
+                    mycols.append(c)
+                    mask = (problems['review_status'].isin(statuses)) & (problems[c].isna()) & (problems['delete_record'].isna()==False) & (problems['delete_record']!='yes')
+                    print(f'Printing head(2); {len(problems[mask])} rows from {len(problems.activity_group_id.unique())} site visits match these criteria')
+                    for x in problems.activity_group_id.unique()[:2]:
+                        mask = (problems['activity_group_id']==x)
+                        print(problems[mask][mycols].head(2))
+                except:
+                    print(f'Failed to print warnings for {c}')
 
     # # if `data_type` == 'float', the following fields are non-nullable
     #     [
@@ -696,7 +708,7 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
         mask = (df['data_type']=='float') & (df[c].isna())
         problems = df[mask]
         if len(problems) > 0:
-                print("")
+                print("--------------------------------------------------------------------------------")
                 print(f'WARNING (c): non-nullable field `{c}` is null in {round(((len(problems))/len(df)*100),2)}% of rows')
                 print("")
                 for x in problems.activity_group_id.unique()[:2]:
@@ -704,7 +716,7 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
                     print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
 
     # check for duplicate `activity_group_id`s for each `SiteVisitParentGlobalID`
-    # TODO
+    # TODO: group by `activity_group_id` and count `SiteVisitParentGlobalID`
 
 
     statuses = ['verified']
@@ -713,8 +725,8 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     mask = (df['review_status'].isin(statuses)) & (df['num_result']<=0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect'])==False) & (df['Characteristic_Name'].isin(['air_temperature','water_temperature'])==False)
     problems = df[mask]
     if len(problems) > 0:
-        print("")
-        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `num_result` < 0 but were not flagged nondetect or p<ql E.g.,')
+        print("--------------------------------------------------------------------------------")
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `num_result` <= 0 but were not flagged nondetect or p<ql\nResolve these warnings by flagging these results\nE.g.,')
         print("")
         for x in problems.activity_group_id.unique()[:2]:
             mask = (problems['activity_group_id']==x)
