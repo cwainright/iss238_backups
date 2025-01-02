@@ -236,7 +236,7 @@ def _backup_make_file_copies(dir_ext:str, newpath:str, src_dir:str, filetypes:li
 
     return None
 
-def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=False) -> pd.DataFrame:
+def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=True) -> pd.DataFrame:
     """Extract-transform-load pipeline that transforms relational NCRN discrete water data into one flat csv and optionally overwrites the feature service underlying the dashboard with the csv
 
     This pipeline finds the newest version of the data in a folder, extracts the newest data, transforms the data into the format for the backend of the QC dashboard.
@@ -296,7 +296,7 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
             print(f'`dashboard_etl()` completed. Elapsed time: {elapsed_time}')
         return True
 
-def wqp_wqx(test_run:bool=False, verbose:bool=False) -> pd.DataFrame:
+def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
     
     include_deletes:bool=False
     
