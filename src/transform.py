@@ -755,5 +755,44 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     # TODO: warn when a flag has a result missing or permanently missing flag but there's a result present
     # TODO: warn when a result is missing but it has no flag
 
+    # check ysi entries against list of known-acceptable probes
+    PROBES = [
+        'ysi_85'
+        ,'ysi_63'
+        ,'ysi_100'
+        ,'ysi_63_or_85'
+        ,'ysi_pro_plus'
+        ,'ysi_pro_dss'
+        ,'calculated_result'
+        ,'Accumet'
+    ]
+    statuses = ['verified']
+    mask = (df['review_status'].isin(statuses)) & (df['ysi_probe'].isin(PROBES)==False) & (df['grouping_var']=='NCRN_WQ_WQUALITY') & (df['ysi_probe'].isna()==False)
+    problems = df[mask].copy()
+    if len(problems) > 0:
+        print("--------------------------------------------------------------------------------")
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `ysi_probe` of other\nResolve these warnings by updating the ysi probe in S123\nE.g.,')
+        print("")
+        for x in problems.activity_group_id.unique()[:2]:
+            mask = (problems['activity_group_id']==x)
+            print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag','ysi_probe']])
+
+    # check flowtracker entries against list of known-acceptable probes
+    PROBES = [
+        'flowtracker_2'
+        ,'flowtracker'
+        ,'marsh_mcbirney_2000'
+    ]
+    statuses = ['verified']
+    mask = (df['review_status'].isin(statuses)) & (df['Characteristic_Name']=='discharge_instrument') & (df['Result_Text'].isin(PROBES)==False) & (df['grouping_var']=='NCRN_WQ_WQUANTITY') & (df['sampleability']=='Actively Sampled') & (df['visit_type']=='Discrete')
+    problems = df[mask].copy()
+    if len(problems) > 0:
+        print("--------------------------------------------------------------------------------")
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `ysi_probe` of other\nResolve these warnings by updating the ysi probe in S123\nE.g.,')
+        print("")
+        for x in problems.activity_group_id.unique()[:2]:
+            mask = (problems['activity_group_id']==x)
+            print(problems[mask][['activity_group_id','record_reviewers','sampleability','review_status','review_date','Characteristic_Name','Result_Text']])
+
     return df
     
