@@ -732,16 +732,37 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     # are our data quality flags uniform?
     # did we ever report 0 (or a negative number) as the result for nutrients? TN, TP, ammonia, etc. probably should change those to NA and update their flag to p<QL
     statuses = ['verified']
-    mask = (df['review_status'].isin(statuses)) & (df['num_result']<=0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect'])==False) & (df['Characteristic_Name'].isin(['air_temperature','water_temperature'])==False)
+    mask = (df['review_status'].isin(statuses)) & (df['num_result']<=0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect', 'equipment_malfunction'])==False) & (df['grouping_var']=='NCRN_WQ_WCHEM')
     problems = df[mask]
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
-        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `num_result` <= 0 but were not flagged nondetect or p<ql\nResolve these warnings by flagging these results')
-        print("Find all instances: mask = (df['review_status'].isin(['verified'])) & (df['num_result']<=0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect'])==False) & (df['Characteristic_Name'].isin(['air_temperature','water_temperature'])==False)")
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had Grabsample-group `num_result` <= 0 but were not flagged nondetect or p<ql\nResolve these warnings by flagging these results')
+        print("Find all instances: mask = (df['review_status'].isin(statuses)) & (df['num_result']<=0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect', 'equipment_malfunction'])==False) & (df['grouping_var']=='NCRN_WQ_WCHEM')")
         print('E.g.,')
         for x in problems.activity_group_id.unique()[:2]:
             mask = (problems['activity_group_id']==x)
             print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
+    
+    # are our data quality flags uniform?
+    # did we ever report 0 (or a negative number) as the result for ysi? probably should change those to NA and update their flag to p<QL
+    statuses = ['verified']
+    mask = (df['review_status'].isin(statuses)) & (df['num_result']<0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect', 'equipment_malfunction'])==False) & (df['grouping_var']=='NCRN_WQ_WQUALITY') & (df['Characteristic_Name'].isin(['water_temperature'])==False)
+    problems = df[mask]
+    if len(problems) > 0:
+        print("--------------------------------------------------------------------------------")
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had YSI-group `num_result` < 0 but were not flagged nondetect, p<ql, equipment malfunction\nResolve these warnings by flagging these results')
+        print("Find all instances: mask = (df['review_status'].isin(statuses)) & (df['num_result']<0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect', 'equipment_malfunction'])==False) & (df['grouping_var']=='NCRN_WQ_WQUALITY') & (df['Characteristic_Name'].isin(['water_temperature'])==False)")
+        print('E.g.,')
+        if len(problems) < 100:
+            for x in problems.activity_group_id.unique():
+                mask = (problems['activity_group_id']==x)
+                print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
+        else:
+            print(f'There are {len(problems)} warnings. Printing the first 5 site visits...')
+            for x in problems.activity_group_id.unique()[:5]:
+                mask = (problems['activity_group_id']==x)
+                print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
+        
 
     # compare flags against known-correct flags so we don't export "other" entries
     FLAGS = [ # A list of known-acceptable flags
