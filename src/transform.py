@@ -900,16 +900,16 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
         ,'marsh_mcbirney_2000'
     ]
     statuses = ['verified']
-    mask = (df['review_status'].isin(statuses)) & (df['Characteristic_Name']=='discharge_instrument') & (df['Result_Text'].isin(PROBES)==False) & (df['grouping_var']=='NCRN_WQ_WQUANTITY') & (df['sampleability']=='Actively Sampled') & (df['visit_type']=='Discrete')
+    mask = (df['review_status'].isin(statuses)) & (df['Characteristic_Name']=='discharge_instrument') & (df['Result_Text'].isin(PROBES)==False) & (df['grouping_var']=='NCRN_WQ_WQUANTITY') & (df['sampleability']=='Actively Sampled') & (df['visit_type']=='Discrete') & (df['skip_req_flowtracker']=='no')
     problems = df[mask].copy()
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
-        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `discharge_instrument` of other or NA\nResolve these warnings by updating the discharge instrument in S123')
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `discharge_instrument` of other or NA and the user did not override\nResolve these warnings by updating the discharge instrument in S123')
         print("Find all instances: mask = (df['review_status'].isin(statuses)) & (df['Characteristic_Name']=='discharge_instrument') & (df['Result_Text'].isin(PROBES)==False) & (df['grouping_var']=='NCRN_WQ_WQUANTITY') & (df['sampleability']=='Actively Sampled') & (df['visit_type']=='Discrete')")
         print('E.g.,')
         for x in problems.activity_group_id.unique()[:2]:
             mask = (problems['activity_group_id']==x)
-            print(problems[mask][['activity_group_id','record_reviewers','sampleability','review_status','review_date','Characteristic_Name','Result_Text']])
+            print(problems[mask][['activity_group_id','record_reviewers','sampleability','review_status','review_date','Characteristic_Name','Result_Text','skip_req_flowtracker']])
 
     return df
     
