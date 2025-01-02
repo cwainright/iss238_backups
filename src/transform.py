@@ -872,7 +872,7 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     problems = df[mask].copy()
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
-        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `ysi_probe` of other\nResolve these warnings by updating the ysi probe in S123\nE.g.,')
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `discharge_instrument` of other or NA\nResolve these warnings by updating the discharge instrument in S123\nE.g.,')
         print("")
         for x in problems.activity_group_id.unique()[:2]:
             mask = (problems['activity_group_id']==x)
