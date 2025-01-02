@@ -305,7 +305,7 @@ def wqp_wqx(test_run:bool=False, verbose:bool=False) -> pd.DataFrame:
     
     # Transform steps
     df:pd.DataFrame = tf._transform(df_dict=df_dict, include_deletes=include_deletes)
-    df = _df_qc(df=df)
+    df = _wqp_qc(df=df)
     df = tf._assign_activity_id(df=df)
 
     # import the example file
@@ -437,7 +437,15 @@ def wqp_wqx(test_run:bool=False, verbose:bool=False) -> pd.DataFrame:
     return wqp
 
 
-def _df_qc(df:pd.DataFrame) -> pd.DataFrame:
+def _wqp_qc(df:pd.DataFrame) -> pd.DataFrame:
+    """Enforce the quality control rules that are relevant for only the WQP version of the data
+
+    Args:
+        df (pd.DataFrame): dataframe in the output format from tf._transform()
+
+    Returns:
+        pd.DataFrame: dataframe in WQP format
+    """
 
     # exclude unverified and review-in-progress records
     df = df[df['review_status']=='verified']
@@ -458,26 +466,6 @@ def _df_qc(df:pd.DataFrame) -> pd.DataFrame:
     mask = (df['Characteristic_Name'].isin(excludes)==False)
     df = df[mask]
     df.reset_index(inplace=True, drop=True)
-
-    # are our data quality flags uniform?
-    # did we ever report 0 (or a negative number) as the result for nutrients? TN, TP, ammonia, etc. probably should change those to NA and update their flag to p<QL
-    mask = (df['num_result']<=0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect'])==False) & (df['Characteristic_Name'].isin(['air_temperature','water_temperature'])==False)
-    problems = df[mask]
-    if len(problems) > 0:
-        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} activity_group_ids had `num_result` < 0 but were not flagged nondetect or p<ql E.g.,')
-        for x in problems.activity_group_id.unique()[:2]:
-            mask = (problems['activity_group_id']==x)
-            print(problems[mask][['activity_group_id','record_reviewers','review_date','Characteristic_Name','num_result','data_quality_flag']])
-
-    # TODO: compare flags against known-correct flags so we don't export "other" entries
-    # FLAGS = [ # A list of known-acceptable flags
-
-    # ] 
-    # mask = (df['data_quality_flag'].isin(FLAGS)==False)
-
-    # TODO:warn when C, TDS, sal are reported <2007 as YSI 100, they need to be moved to a results-were-calculated increment and blanked-out in the YSI100 increment
-    # TODO: warn when a flag has a result missing or permanently missing flag but there's a result present
-    # TODO: warn when a result is missing but it has no flag
 
     return df
 
