@@ -729,15 +729,16 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     else:
         print('There are no duplicated site visits!')
 
-    statuses = ['verified']
     # are our data quality flags uniform?
     # did we ever report 0 (or a negative number) as the result for nutrients? TN, TP, ammonia, etc. probably should change those to NA and update their flag to p<QL
+    statuses = ['verified']
     mask = (df['review_status'].isin(statuses)) & (df['num_result']<=0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect'])==False) & (df['Characteristic_Name'].isin(['air_temperature','water_temperature'])==False)
     problems = df[mask]
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
-        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `num_result` <= 0 but were not flagged nondetect or p<ql\nResolve these warnings by flagging these results\nE.g.,')
-        print("")
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `num_result` <= 0 but were not flagged nondetect or p<ql\nResolve these warnings by flagging these results')
+        print("Find all instances: mask = (df['review_status'].isin(['verified'])) & (df['num_result']<=0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect'])==False) & (df['Characteristic_Name'].isin(['air_temperature','water_temperature'])==False)")
+        print('E.g.,')
         for x in problems.activity_group_id.unique()[:2]:
             mask = (problems['activity_group_id']==x)
             print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
@@ -760,7 +761,9 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     problems = df[mask].copy()
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
-        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `data_quality_flag` of other\nResolve these warnings by updating the result flag in S123\nE.g.,')
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `data_quality_flag` of other\nResolve these warnings by updating the result flag in S123')
+        print("Find all instances: mask = (df['review_status'].isin(statuses)) & (df['data_quality_flag'].isin(['permanently_missing','not_on_datasheet','present_not_on_datasheet','present_less_than_ql','present_greater_than_ql','nondetect','value_below_mdl_actual_reported','value_below_mdl_method_limit_reported','value_below_rl_actual_reported','equipment_malfunction'])==False) & (df['data_quality_flag'].isna()==False)")
+        print('E.g.,')
         if len(problems) < 100:
             for x in problems.activity_group_id.unique():
                 mask = (problems['activity_group_id']==x)
@@ -781,7 +784,9 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     problems = df[mask].copy()
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
-        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `Characteristic_Name` in ["tds","conductivity"] and `ysi_probe` of "ysi_100".\nYSI 100 does not measure these characteristics so this is an invalid entry.\nResolve these warnings by updating the ysi probe in S123\nE.g.,')
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `Characteristic_Name` in ["tds","conductivity"] and `ysi_probe` of "ysi_100".\nYSI 100 does not measure these characteristics so this is an invalid entry.\nResolve these warnings by updating the ysi probe in S123')
+        print("Find all instances: mask = (df['review_status'].isin(statuses)) & (df['Characteristic_Name'].isin(['conductivity','tds'])) & (df['ysi_probe']=='ysi_100')")
+        print('E.g.,')
         if len(problems) < 100:
             for x in problems.activity_group_id.unique():
                 mask = (problems['activity_group_id']==x)
@@ -802,7 +807,9 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     problems = df[mask].copy()
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
-        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `data_quality_flag` in ["not_on_datasheet","permanently_missing"] but had a result.\nResolve these warnings by updating the flag or the result in S123\nE.g.,')
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `data_quality_flag` in ["not_on_datasheet","permanently_missing"] but had a result.\nResolve these warnings by updating the flag or the result in S123')
+        print("Find all instances: mask = (df['review_status'].isin(['verified'])) & (df['data_quality_flag'].isin(['not_on_datasheet','permanently_missing']))")
+        print('E.g.,')
         if len(problems) < 100:
             for x in problems.activity_group_id.unique():
                 mask = (problems['activity_group_id']==x)
@@ -828,7 +835,9 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     problems = df[mask].copy()
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
-        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had NA result and the result was not flagged in ["not_on_datasheet","permanently_missing"].\nResolve these warnings by updating the flag or the result in S123\nE.g.,')
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had NA result and the result was not flagged in ["not_on_datasheet","permanently_missing"].\nResolve these warnings by updating the flag or the result in S123')
+        print("Find all instances: mask = (df['review_status'].isin(statuses)) & (df['num_result'].isna()) & (df['data_quality_flag'].isin(MISSING_FLAGS)==False) & (df['grouping_var'].isin(GROUPING_VARS)) & (df['data_type']=='float')")
+        print('E.g.,')
         mycols = ['activity_group_id','sampleability','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']
         if len(problems) < 100:
             for x in problems.activity_group_id.unique():
@@ -856,7 +865,9 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     problems = df[mask].copy()
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
-        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `ysi_probe` of other\nResolve these warnings by updating the ysi probe in S123\nE.g.,')
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `ysi_probe` of other\nResolve these warnings by updating the ysi probe in S123')
+        print("Find all instances: mask = (df['review_status'].isin(statuses)) & (df['ysi_probe'].isin(PROBES)==False) & (df['grouping_var']=='NCRN_WQ_WQUALITY') & (df['ysi_probe'].isna()==False)")
+        print('E.g.,')
         for x in problems.activity_group_id.unique()[:2]:
             mask = (problems['activity_group_id']==x)
             print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag','ysi_probe']])
@@ -872,8 +883,9 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     problems = df[mask].copy()
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
-        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `discharge_instrument` of other or NA\nResolve these warnings by updating the discharge instrument in S123\nE.g.,')
-        print("")
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `discharge_instrument` of other or NA\nResolve these warnings by updating the discharge instrument in S123')
+        print("Find all instances: mask = (df['review_status'].isin(statuses)) & (df['Characteristic_Name']=='discharge_instrument') & (df['Result_Text'].isin(PROBES)==False) & (df['grouping_var']=='NCRN_WQ_WQUANTITY') & (df['sampleability']=='Actively Sampled') & (df['visit_type']=='Discrete')")
+        print('E.g.,')
         for x in problems.activity_group_id.unique()[:2]:
             mask = (problems['activity_group_id']==x)
             print(problems[mask][['activity_group_id','record_reviewers','sampleability','review_status','review_date','Characteristic_Name','Result_Text']])
