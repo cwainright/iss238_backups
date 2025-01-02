@@ -746,14 +746,40 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
             print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
 
     # TODO: compare flags against known-correct flags so we don't export "other" entries
-    # FLAGS = [ # A list of known-acceptable flags
-
-    # ] 
-    # mask = (df['data_quality_flag'].isin(FLAGS)==False)
+    FLAGS = [ # A list of known-acceptable flags
+        'permanently_missing'
+        ,'not_on_datasheet'
+        ,'present_not_on_datasheet'
+        ,'present_less_than_ql'
+        ,'present_greater_than_ql'
+        ,'nondetect'
+        ,'value_below_mdl_actual_reported'
+        ,'value_below_mdl_method_limit_reported'
+        ,'value_below_rl_actual_reported'
+        ,'equipment_malfunction'
+    ] 
+    statuses = ['verified']
+    mask = (df['review_status'].isin(statuses)) & (df['data_quality_flag'].isin(FLAGS)==False) & (df['data_quality_flag'].isna()==False)
+    problems = df[mask].copy()
+    if len(problems) > 0:
+        print("--------------------------------------------------------------------------------")
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `data_quality_flag` of other\nResolve these warnings by updating the result flag in S123\nE.g.,')
+        if len(problems) < 100:
+            for x in problems.activity_group_id.unique():
+                mask = (problems['activity_group_id']==x)
+                print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
+        else:
+            print(f'There are {len(problems)} warnings. Printing the first 2 site visits...')
+            for x in problems.activity_group_id.unique()[:2]:
+                mask = (problems['activity_group_id']==x)
+                print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
 
     # TODO: warn when C, TDS, sal are reported <2007 as YSI 100, they need to be moved to a results-were-calculated increment and blanked-out in the YSI100 increment
     # TODO: warn when a flag has a result missing or permanently missing flag but there's a result present
     # TODO: warn when a result is missing but it has no flag
+
+    statuses = ['verified']
+    mask = (df['review_status'].isin(statuses)) & (df['Result_Text'].isna()) & (df['grouping_var']=='NCRN_WQ_WQUALITY') & (df['ysi_probe'].isna()==False)
 
     # check ysi entries against list of known-acceptable probes
     PROBES = [
@@ -772,7 +798,6 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
         print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `ysi_probe` of other\nResolve these warnings by updating the ysi probe in S123\nE.g.,')
-        print("")
         for x in problems.activity_group_id.unique()[:2]:
             mask = (problems['activity_group_id']==x)
             print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag','ysi_probe']])
