@@ -716,8 +716,21 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
                     print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
 
     # check for duplicate `activity_group_id`s for each `SiteVisitParentGlobalID`
-    # TODO: group by `activity_group_id` and count `SiteVisitParentGlobalID`
-
+    # group by `activity_group_id` and count `SiteVisitParentGlobalID`
+    # filter to count>1
+    # print those warnings
+    problems = df.copy().drop_duplicates('SiteVisitGlobalID')[['activity_group_id','SiteVisitGlobalID']].groupby(['activity_group_id','SiteVisitGlobalID']).size().reset_index(name='n').sort_values(['n'], ascending=True)
+    problems = problems[problems['n']>1] # anything in this subset is a duplicated site visit record in S123
+    if len(problems) > 0:
+        print("--------------------------------------------------------------------------------")
+        print(f'WARNING: {len(problems)} site visits are duplicated in S123\nResolve these warnings by deduplicating the site visits in S123\nE.g.,')
+        if len(problems) < 100:
+            print('Printing all duplicated site visits:')
+            print(problems.to_string())
+        else:
+            print('More than 100 site visits are duplicated.\nPrinting the first 100...')
+    else:
+        print('There are no duplicated site visits!')
 
     statuses = ['verified']
     # are our data quality flags uniform?
