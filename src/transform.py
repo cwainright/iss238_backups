@@ -801,12 +801,12 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
         'conductivity'
         ,'tds'
     ]
-    mask = (df['review_status'].isin(statuses)) & (df['Characteristic_Name'].isin(chars)) & (df['ysi_probe']=='ysi_100')
+    mask = (df['review_status'].isin(statuses)) & (df['Characteristic_Name'].isin(chars)) & (df['ysi_probe']=='ysi_100') & (df['num_result'].isna()==False)
     problems = df[mask].copy()
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
         print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `Characteristic_Name` in ["tds","conductivity"] and `ysi_probe` of "ysi_100".\nYSI 100 does not measure these characteristics so this is an invalid entry.\nResolve these warnings by updating the ysi probe in S123')
-        print("Find all instances: mask = (df['review_status'].isin(statuses)) & (df['Characteristic_Name'].isin(['conductivity','tds'])) & (df['ysi_probe']=='ysi_100')")
+        print("Find all instances: mask = (df['review_status'].isin(statuses)) & (df['Characteristic_Name'].isin(['conductivity','tds'])) & (df['ysi_probe']=='ysi_100') & (df['num_result'].isna()==False)")
         print('E.g.,')
         if len(problems) < 100:
             for x in problems.activity_group_id.unique():
@@ -824,14 +824,14 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
         'not_on_datasheet' # i.e., result missing
         ,'permanently_missing'
     ]
-    mask = (df['review_status'].isin(statuses)) & (df['data_quality_flag'].isin(chars))
+    mask = (df['review_status'].isin(statuses)) & (df['data_quality_flag'].isin(chars)) & (df['num_result'].isna()==False)
     problems = df[mask].copy()
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
         print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `data_quality_flag` in ["not_on_datasheet","permanently_missing"] but had a result.\nResolve these warnings by updating the flag or the result in S123')
-        print("Find all instances: mask = (df['review_status'].isin(['verified'])) & (df['data_quality_flag'].isin(['not_on_datasheet','permanently_missing']))")
+        print("Find all instances: mask = (df['review_status'].isin(['verified'])) & (df['data_quality_flag'].isin(['not_on_datasheet','permanently_missing'])) & (df['num_result'].isna()==False)")
         print('E.g.,')
-        if len(problems) < 100:
+        if len(problems) < 50:
             for x in problems.activity_group_id.unique():
                 mask = (problems['activity_group_id']==x)
                 print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
