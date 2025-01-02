@@ -745,7 +745,7 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
             mask = (problems['activity_group_id']==x)
             print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
 
-    # TODO: compare flags against known-correct flags so we don't export "other" entries
+    # compare flags against known-correct flags so we don't export "other" entries
     FLAGS = [ # A list of known-acceptable flags
         'permanently_missing'
         ,'not_on_datasheet'
@@ -774,7 +774,27 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
                 mask = (problems['activity_group_id']==x)
                 print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
 
-    # TODO: warn when C, TDS, sal are reported <2007 as YSI 100, they need to be moved to a results-were-calculated increment and blanked-out in the YSI100 increment
+    # warn when C, TDS, sal are reported <2007 as YSI 100, they need to be moved to a results-were-calculated increment and blanked-out in the YSI100 increment
+    statuses = ['verified']
+    chars = [
+        'conductivity'
+        ,'tds'
+    ]
+    mask = (df['review_status'].isin(statuses)) & (df['Characteristic_Name'].isin(chars)) & (df['ysi_probe']=='ysi_100')
+    problems = df[mask].copy()
+    if len(problems) > 0:
+        print("--------------------------------------------------------------------------------")
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `Characteristic_Name` in ["tds","conductivity"] and `ysi_probe` of "ysi_100".\nYSI 100 does not measure these characteristics so this is an invalid entry.\nResolve these warnings by updating the ysi probe in S123\nE.g.,')
+        if len(problems) < 100:
+            for x in problems.activity_group_id.unique():
+                mask = (problems['activity_group_id']==x)
+                print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','ysi_probe']])
+        else:
+            print(f'There are {len(problems)} warnings. Printing the first 2 site visits...')
+            for x in problems.activity_group_id.unique()[:2]:
+                mask = (problems['activity_group_id']==x)
+                print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','ysi_probe']])
+    
     # TODO: warn when a flag has a result missing or permanently missing flag but there's a result present
     # TODO: warn when a result is missing but it has no flag
 
