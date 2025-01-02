@@ -795,7 +795,26 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
                 mask = (problems['activity_group_id']==x)
                 print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','ysi_probe']])
     
-    # TODO: warn when a flag has a result missing or permanently missing flag but there's a result present
+    # warn when a flag has a result missing or permanently missing flag but there's a result present
+    statuses = ['verified']
+    chars = [
+        'not_on_datasheet' # i.e., result missing
+        ,'permanently_missing'
+    ]
+    mask = (df['review_status'].isin(statuses)) & (df['data_quality_flag'].isin(chars))
+    problems = df[mask].copy()
+    if len(problems) > 0:
+        print("--------------------------------------------------------------------------------")
+        print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `data_quality_flag` in ["not_on_datasheet","permanently_missing"] but had a result.\nResolve these warnings by updating the flag or the result in S123\nE.g.,')
+        if len(problems) < 100:
+            for x in problems.activity_group_id.unique():
+                mask = (problems['activity_group_id']==x)
+                print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
+        else:
+            print(f'There are {len(problems)} warnings. Printing the first 10 site visits...')
+            for x in problems.activity_group_id.unique()[:10]:
+                mask = (problems['activity_group_id']==x)
+                print(problems[mask][['activity_group_id','record_reviewers','review_status','review_date','Characteristic_Name','num_result','data_quality_flag']])
     # TODO: warn when a result is missing but it has no flag
 
     statuses = ['verified']
