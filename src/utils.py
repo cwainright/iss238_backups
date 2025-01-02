@@ -268,11 +268,12 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
     # Transform steps
     df:pd.DataFrame = tf._transform(df_dict=df_dict, include_deletes=include_deletes)
     dashboard_cols = pd.read_csv(r'data\ncrn_discrete_water_dashboard_be_20240822.csv', nrows=5).columns
-    df = df[dashboard_cols]
     
     # QC checks
     if verbose == True:
         tf._quality_control(df)
+    
+    df = df[dashboard_cols]
 
     if test_run == True:
         print('df returned')
@@ -305,6 +306,8 @@ def wqp_wqx(test_run:bool=False, verbose:bool=False) -> pd.DataFrame:
     
     # Transform steps
     df:pd.DataFrame = tf._transform(df_dict=df_dict, include_deletes=include_deletes)
+        # QC checks
+    df = tf._quality_control(df)
     df = _wqp_qc(df=df)
     df = tf._assign_activity_id(df=df)
 
