@@ -435,7 +435,8 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
                 except:
                     print(f"WARNING! Calculated column `xwalk['{k}']['{x}']`, code line `{y}` failed.")
     
-    # write to csv if test_run == False
+    # TODO: re-code the characteristic names
+    # TODO: write to csv if test_run == False
 
     return wqp
 
