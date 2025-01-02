@@ -887,7 +887,7 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
         print(f'WARNING: {len(problems)} results from {len(problems.activity_group_id.unique())} verified activity_group_ids had `ysi_probe` of other\nResolve these warnings by updating the ysi probe in S123')
-        print("Find all instances: mask = (df['review_status'].isin(statuses)) & (df['ysi_probe'].isin(PROBES)==False) & (df['grouping_var']=='NCRN_WQ_WQUALITY') & (df['ysi_probe'].isna()==False)")
+        print("Find all instances: mask = (df['review_status'].isin(statuses)) & (df['ysi_probe'].isin(['ysi_85','ysi_63','ysi_100','ysi_63_or_85','ysi_pro_plus','ysi_pro_dss','calculated_result','Accumet'])==False) & (df['grouping_var']=='NCRN_WQ_WQUALITY') & (df['ysi_probe'].isna()==False)")
         print('E.g.,')
         for x in problems.activity_group_id.unique()[:2]:
             mask = (problems['activity_group_id']==x)
@@ -910,6 +910,26 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
         for x in problems.activity_group_id.unique()[:2]:
             mask = (problems['activity_group_id']==x)
             print(problems[mask][['activity_group_id','record_reviewers','sampleability','review_status','review_date','Characteristic_Name','Result_Text','skip_req_flowtracker']])
-
+    
+    # warn if site visit notes has {}
+    statuses = ['verified']
+    mask = (df['review_status'].isin(statuses)) & (df['site_visit_notes'].str.contains('{"Station_Visit_Comment"'))
+    problems = df[mask].drop_duplicates('activity_group_id').copy()
+    if len(problems) > 0:
+        print("--------------------------------------------------------------------------------")
+        print(f'WARNING: {len(problems.activity_group_id.unique())} verified activity_group_ids has `non-human-readable` site-visit notes\nResolve these warnings by updating the notes in S123')
+        print("Find all instances: mask = (df['review_status'].isin(statuses)) & (df['site_visit_notes'].str.contains('{')")
+        print('E.g.,')
+        mycols = ['activity_group_id','record_reviewers','sampleability','review_status','review_date','site_visit_notes']
+        if len(problems) < 20:
+            for x in problems.activity_group_id.unique():
+                mask = (problems['activity_group_id']==x)
+                print(problems[mask][mycols])
+        else:
+            print(f'There are {len(problems)} warnings. Printing the first 20 site visits...')
+            for x in problems.activity_group_id.unique()[:20]:
+                mask = (problems['activity_group_id']==x)
+                print(problems[mask][mycols])
+    
     return df
     
