@@ -732,7 +732,7 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     # are our data quality flags uniform?
     # did we ever report 0 (or a negative number) as the result for nutrients? TN, TP, ammonia, etc. probably should change those to NA and update their flag to p<QL
     statuses = ['verified']
-    mask = (df['review_status'].isin(statuses)) & (df['num_result']<=0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect', 'equipment_malfunction'])==False) & (df['grouping_var']=='NCRN_WQ_WCHEM')
+    mask = (df['review_status'].isin(statuses)) & (df['num_result']<=0) & (df['data_quality_flag'].isin(['present_less_than_ql', 'nondetect', 'equipment_malfunction', 'value_below_mdl_actual_reported'])==False) & (df['grouping_var']=='NCRN_WQ_WCHEM')
     problems = df[mask]
     if len(problems) > 0:
         print("--------------------------------------------------------------------------------")
