@@ -800,6 +800,7 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     chars = [
         'conductivity'
         ,'tds'
+        ,'salinity'
     ]
     mask = (df['review_status'].isin(statuses)) & (df['Characteristic_Name'].isin(chars)) & (df['ysi_probe']=='ysi_100') & (df['num_result'].isna()==False)
     problems = df[mask].copy()
