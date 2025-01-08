@@ -28,8 +28,11 @@ Examples:
     item = gis.content.get(target_itemid) # if this does not return a valid item ID, you do not have a valid token
 
     # run the backup routine
-    utils.backup_water(verbose=True, test_run=False) # query prod
-    utils.dashboard_etl(test_run=False, include_deletes=False, verbose=True) # query prod
+    utils.backup_water(verbose=True) # query records from prod
+    utils.dashboard_etl(test_run=False) # transform and load to prod, does not return df
+    df = utils.dashboard_etl(test_run=True) # returns df, does not load prod
+    utils.wqp_wqx(test_run=False) # transform and load to prod, does not return df
+    df = utils.wqp_wqx(test_run=True) # returns df, does not load prod
 
 """
 
@@ -436,10 +439,75 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
                     print(f"WARNING! Calculated column `xwalk['{k}']['{x}']`, code line `{y}` failed.")
     
     # TODO: re-code the characteristic names
+    wqp = _recode_wqp_chars(wqp=wqp)
     # TODO: write to csv if test_run == False
 
     return wqp
 
+def _recode_wqp_chars(wqp:pd.DataFrame) -> pd.DataFrame:
+    """Recode the characteristic names from NCRN charnames to WQP charnames
+
+    Hard-coded values from: https://www.epa.gov/waterdata/water-quality-data-upload-wqx#wqxoverview:~:text=Quick%20WQX%20Web%20User%20guide
+
+    Args:
+        wqp (pd.DataFrame): A dataframe of preprocessed NCRN water records in WQP columns
+
+    Returns:
+        pd.DataFrame: The input dataframe with characteristic names recoded from NCRN aliases to WQP `CharacteristicName` values
+    """
+    # make a lookup table so that 
+    lu = pd.DataFrame({'ncrn':wqp.CharacteristicName.unique()})
+    lu['wqp'] = None
+
+    # hard code the values into the lookup table
+    # https://www.epa.gov/waterdata/water-quality-data-upload-wqx#wqxoverview:~:text=Quick%20WQX%20Web%20User%20guide
+    lu['wqp'] = np.where(lu['ncrn']=='air_temperature','Temperature, air',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='discharge','Base flow discharge',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='mean_crossection_depth','Cross-Section Depth',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='water_temperature','Temperature, water',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='ph','pH',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='specific_conductance','Specific conductance',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='do_concentration','Dissolved oxygen (DO)',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='do_saturation','Dissolved oxygen saturation',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='anc','Acid Neutralizing Capacity (ANC)',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='stream_physical_appearance','Weather condition (WMO code 4501) (choice list)',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='tp','Total Phosphorus, mixed forms',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='ammonia','Ammonia',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='nitrate','Nitrate',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='wetted_width','Wetted Width',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='mean_velocity','Velocity - stream',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='barometric_pressure','Barometric pressure',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='conductivity','Conductivity',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='salinity','Salinity',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='tds','Total dissolved solids',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='tn','Total Nitrogen, mixed forms',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='orthophosphate','Orthophosphate',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='tdn','Total Dissolved Nitrogen, mixed forms',lu['wqp']) # there is not a 1:1 equivalent for this in wqp
+    lu['wqp'] = np.where(lu['ncrn']=='tdp','Total Dissolved Phosphorus, mixed forms',lu['wqp']) # there is not a 1:1 equivalent for this in wqp
+    lu['wqp'] = np.where(lu['ncrn']=='weather_condition','Water appearance (text)',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='rain_last_24','RBP2, Weather Condition, Heavy Rain in Last 7 Days, Y/N (choice list)',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='algae_cover_percent','Substrate algae, % (choice list)',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='algae_description','Substrate algae color',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='flow_status','Stream flow (choice list)',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='chlorine','Chlorine',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='turbidity','Turbidity',lu['wqp'])
+
+    # sanity check that the lu is complete
+    missing = lu[lu['wqp'].isna()]
+    assert len(missing) == 0, print(f'FAIL! {len(missing)} values are present in the dataset but missing from the lookup. See `_recode_wqp_chars()`\n\n{missing.ncrn.unique()}')
+
+    # sanity check that every value in the lu is unique
+    dupes = lu.drop_duplicates('ncrn')
+    assert len(dupes) == len(lu), print(f'FAIL! there are duplicates in the lookup. See `_recode_wqp_chars()')
+    dupes = lu.drop_duplicates('wqp')
+    assert len(dupes) == len(lu), print(f'FAIL! there are duplicates in the lookup. See `_recode_wqp_chars()')
+
+    for x in lu.ncrn.values:
+        mask = (wqp['CharacteristicName']==x)
+        replacement = lu[lu['ncrn']==x].wqp.unique()[0]
+        wqp['CharacteristicName'] = np.where(mask, replacement, wqp['CharacteristicName'])
+
+    return wqp
 
 def _wqp_qc(df:pd.DataFrame) -> pd.DataFrame:
     """Enforce the quality control rules that are relevant for only the WQP version of the data
@@ -461,11 +529,12 @@ def _wqp_qc(df:pd.DataFrame) -> pd.DataFrame:
         ,'duplicate_y_n'
         ,'nutrient_bottle_size'
         ,'anc_bottle_size'
-        # ,'ysi_increment_distance'
+        ,'ysi_increment_distance'
         ,'entry_other_stream_phy_appear'
         ,'discharge_instrument'
         ,'ysi_probe'
-        # ,'tape_offset'
+        ,'tape_offset'
+        ,'rain_last_24'
     ]
     mask = (df['Characteristic_Name'].isin(excludes)==False)
     df = df[mask]
