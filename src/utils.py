@@ -337,7 +337,7 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             ,'ActivityLocation/LongitudeMeasure':'ncrn_longitude'
             ,'ResultDetectionConditionText':'data_quality_flag'
             ,'CharacteristicName':'Characteristic_Name'
-            ,'ResultMeasureValue':'str_result'
+            ,'ResultMeasureValue':'Result_Text'
             ,'ResultMeasure/MeasureUnitCode':'Result_Unit'
             ,'ResultAnalyticalMethod/MethodIdentifier':'grouping_var'
             ,'LaboratoryName':'lab'
