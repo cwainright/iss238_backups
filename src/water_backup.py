@@ -86,7 +86,7 @@ def _agol_tbl_to_df(in_fc:str, input_fields:list=[], query:str="", skip_nulls:bo
         print(f'{final_fields=}')
         return None
 
-def _agol_hosted_feature(newpath:str, verbose:bool, dir_ext:str, in_fc:str=assets.WATER_AGOL_ITEM_ID, download_types:list=['CSV','File Geodatabase']) -> None:
+def _agol_hosted_feature(newpath:str, verbose:bool, dir_ext:str, in_fc:str=assets.WATER_AGOL_ITEM_ID, download_types:list=['CSV','File Geodatabase'], fname_prefix:str='ncrn_water_') -> None:
     """Download a hosted feature layer as one or more filetypes
 
     Args:
@@ -115,7 +115,7 @@ def _agol_hosted_feature(newpath:str, verbose:bool, dir_ext:str, in_fc:str=asset
         utils._add_log_entry(log_timestamp=dir_ext, src_file=in_fc, log_dest=fname, log_result=log_res)
 
     for t in download_types:
-        fname:str = f'ncrn_water_{t.lower().replace(" ","_")}_{dir_ext}'
+        fname:str = f'{fname_prefix}{t.lower().replace(" ","_")}_{dir_ext}'
         ftype:str = t
         fpath:str = os.path.join(newpath,fname)
         try:
