@@ -298,23 +298,94 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
             elapsed_time = elapsed_time.split('.')[0]
             print(f'`dashboard_etl()` completed. Elapsed time: {elapsed_time}')
         return True
-def wqp_metadata(df:str='data/wqp.csv') -> pd.DataFrame:
+
+def wqp_metadata(df:str='data/wqp.csv', write:str='') -> pd.DataFrame:
+    """Build a NCRNWater-compatible metadata dataframe from a csv of WQP-formatted NCRN water records
+
+    Args:
+        df (str, optional): absolute or relative filepath to a csv of wqp-formatted NCRN water records; the output of utils.wqp(). Defaults to 'data/wqp.csv', which was updated on 2024-01-22.
+        write (str, optional): absolute or relative filepath where you want to save a csv of the metadata dataframe. Only writes if not blank. Defaults to ''.
+
+    Returns:
+        pd.DataFrame: A dataframe containing NCRNWater-compatible metadata
+
+    Examples:
+        wqp_metadata = utils.wqp_metadata()
+        wqp_metadata = utils.wqp_metadata(df='data/wqp.csv')
+        wqp_metadata = utils.wqp_metadata(df='data/wqp.csv', write='output/ncrnwater_wqp_metadata.csv')
+    """
+
+    if write != '':
+        assert write.endswith('.csv')
 
     # 1. read csvs
     md = pd.read_csv(r'data/MetaData.csv', encoding = "ISO-8859-1")
+    df = pd.read_csv(df)
     md['SiteCodeWQX'] = md['SiteCode'] # preprocess; NCRN no longer maintains two site-naming-conventions
 
     # 2.a. Fix incongruencies: Site names
     md = _wqp_metadata_site_incongruency(df, md)
     # 2.b. Fix incongruencies: CharacteristicNames
     md = _wqp_metadata_char_incongruency(df, md)
-    
 
+    _wqp_metadata_qc(df, md)
+
+    if write != '':
+        md.to_csv(write, index=False)
+        print("Wrote WQP Metadata to: {write}")
+
+    print("WQP Metadata dataframe returned")
     return md
 
 def _wqp_metadata_char_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.DataFrame:
 
     return md
+
+def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
+
+    problems = 0
+
+    non_nullables = [
+        'Network'
+        ,'ParkCode'
+        ,'ShortName'
+        ,'LongName'
+        ,'SiteCode'
+        ,'SiteCodeWQX'
+        ,'SiteName'
+        ,'Lat'
+        ,'Long'
+        ,'Type'
+        ,'CharacteristicName'
+        ,'DisplayName'
+        ,'DataName'
+        ,'Category'
+        ,'CategoryDisplay'
+        ,'Units'
+        ,'DataType'
+    ]
+    for col in non_nullables:
+        mask = (md[col].isna()) & (md['DataType']!='factor')
+        sub = md[mask]
+        if len(sub) > 0:
+            print(f'WARNING: non-nullable field {col} was null in {len(sub)} rows of wqp metadata.')
+            problems += 1
+
+    conditionally_nullable = {
+        'LowerDescription': 'AssessmentDetails'
+        ,'UpperDescription': 'AssessmentDetails'
+    }
+    for k,v in conditionally_nullable.items():
+        mask = (md[k].isna()==False) & (md[v].isna())
+        sub = md[mask]
+        if len(sub) > 0:
+            print(f'WARNING: conditinally-nullable field {v} was null in {len(sub)} rows of wqp metadata.')
+            problems += 1
+
+    if problems == 0:
+        print("Markdown passed QC...")
+
+
 
 def _wqp_metadata_site_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.DataFrame:
 
@@ -335,7 +406,8 @@ def _wqp_metadata_site_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.Data
     template['CharacteristicName'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['CharacteristicName']
     template['DisplayName'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['DisplayName']
     template['Type'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['Type']
-
+    template['DataName'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['DataName']
+    template['DataType'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['DataType']
 
     lu = md[['ParkCode','ShortName','LongName']].drop_duplicates('ShortName')
     # for each site that needs to be added, fill-in the template and append to the metadata file
