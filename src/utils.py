@@ -298,6 +298,46 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
             elapsed_time = elapsed_time.split('.')[0]
             print(f'`dashboard_etl()` completed. Elapsed time: {elapsed_time}')
         return True
+def wqp_metadata() -> pd.DataFrame:
+
+    df = pd.DataFrame()
+
+    return df
+
+def water_sites(out_filename:str) -> pd.DataFrame:
+    """Make a user-friendly dataframe of NCRN Water monitoring locations
+
+    Included site attributes:
+        PROTOCOL: str; the name of the NCRN monitoring protocol
+        GROUPCODE: str; the four-letter code for the Park
+        GROUPNAME: str; the Park formal name
+        UNITCODE: str; the four-letter code for the Park or sub-park-unit, if relevant
+        UNITNAME: str; the Park or sub-park-unit formal name
+        IMLOCID: str; the location identifier in format "NCRN", "GROUPCODE", "site code"
+        SITENAME: str; the site formal name
+        LON_DECDEG: float; site longitude in decimal degrees
+        LAT_DECDEG: float; site latitude in decimal degrees
+
+    Args:
+        out_filename (str): relative or absolute filepath to save the file
+
+    Returns:
+        pd.DataFrame: dataframe of NCRN Water monitoring locations
+
+    Examples:
+        import utils
+        df = utils.water_sites('mydf.csv')
+    """
+    assert out_filename.endswith('.csv')
+
+    df = pd.read_csv(r"data\ECO_MonitoringLocations_pt_0.csv")
+    # TODO: replace this pd.read_csv() call with a water_backup._agol_hosted_feature() call so the sites stay in-sync with prod data
+    mask = (df['PROTOCOL']=='Water') & (df['ISEXTANT']=='TRUE')
+    df = df[mask][['PROTOCOL','GROUPCODE','GROUPNAME','UNITCODE','UNITNAME','IMLOCID','SITENAME','X','Y']].drop_duplicates('IMLOCID').sort_values('GROUPCODE')
+    df.rename(columns={'X':'LON_DECDEG','Y':'LAT_DECDEG'}, inplace=True)
+    df.to_csv(out_filename, index=False)
+
+    return df  
 
 def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
     
