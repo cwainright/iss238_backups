@@ -298,11 +298,118 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
             elapsed_time = elapsed_time.split('.')[0]
             print(f'`dashboard_etl()` completed. Elapsed time: {elapsed_time}')
         return True
-def wqp_metadata() -> pd.DataFrame:
+def wqp_metadata(df:str='data/wqp.csv') -> pd.DataFrame:
 
-    df = pd.DataFrame()
+    # 1. read csvs
+    md = pd.read_csv(r'data/MetaData.csv', encoding = "ISO-8859-1")
+    md['SiteCodeWQX'] = md['SiteCode'] # preprocess; NCRN no longer maintains two site-naming-conventions
 
-    return df
+    # 2.a. Fix incongruencies: Site names
+    md = _wqp_metadata_site_incongruency(df, md)
+    # 2.b. Fix incongruencies: CharacteristicNames
+    md = _wqp_metadata_char_incongruency(df, md)
+    
+
+    return md
+
+def _wqp_metadata_char_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.DataFrame:
+
+    return md
+
+def _wqp_metadata_site_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.DataFrame:
+
+    # Incongruencies can go in either of two directions: adds or deletes
+    deletes = [x for x in md.SiteCodeWQX.unique() if x not in df.MonitoringLocationIdentifier.unique()] # anything present in md but absent from df should be deleted from md
+    mask = (md['SiteCodeWQX'].isin(deletes)==False)
+    md = md[mask].reset_index(drop=True)
+
+    adds = [x for x in df.MonitoringLocationIdentifier.unique() if x not in md.SiteCodeWQX.unique()] # anything present in df but absent in md should be added to md
+    
+    # make a template: each site needs the exact columns and rows present in the template
+    template = pd.DataFrame(columns=md.columns)
+    template['Network'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['Network']
+    template['DataName'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['DataName']
+    template['Category'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['Category']
+    template['CategoryDisplay'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['CategoryDisplay']
+    template['Units'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['Units']
+    template['CharacteristicName'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['CharacteristicName']
+    template['DisplayName'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['DisplayName']
+    template['Type'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['Type']
+
+
+    lu = md[['ParkCode','ShortName','LongName']].drop_duplicates('ShortName')
+    # for each site that needs to be added, fill-in the template and append to the metadata file
+    for a in adds:
+        mask = (df['MonitoringLocationIdentifier']==a)
+        # base cases
+        sitecode = None
+        sitecodewqx = None
+        sitename = None
+        parkcode = None
+        shortname = None
+        longname = None
+        lat = np.NaN
+        lon = np.NaN
+
+        # cols to fill into template
+        # SiteCode, SiteCodeWQX, ParkCode
+        sitecodes = df[mask].MonitoringLocationIdentifier.unique()
+        if len(sitecodes)==1:
+            sitecode = sitecodes[0]
+            sitecodewqx = sitecodes[0]
+            parkcode = sitecode.split('_')[1]
+        # SiteName
+        sitenames = df[mask].MonitoringLocationName.unique()
+        if len(sitenames) == 1:
+            sitename = sitenames[0]
+        # ShortName and LongName
+        if parkcode is not None and parkcode in lu.ParkCode.unique():
+            shortname = lu[lu['ParkCode']==parkcode].ShortName.unique()[0]
+            longname = lu[lu['ParkCode']==parkcode].LongName.unique()[0]
+        # Lat
+        lats = df[mask]['ActivityLocation/LatitudeMeasure'].unique()
+        if len(lats) == 1:
+            lat = lats[0]
+        # Long
+        lons = df[mask]['ActivityLocation/LongitudeMeasure'].unique()
+        if len(lons) == 1:
+            lon = lons[0]
+
+        # QC; if the algo can't figure out the "right" answer, just have the user input the right answer
+        if sitecode is None:
+            print(f'WARNING: failed to parse {a}: {sitecodes=}')
+            sitecode = input(f'Enter a sitecode for {a}. e.g., NCRN_XXXX_YYYY')
+            sitecodewqx = sitecode
+            parkcode = sitecode.split('_')[1]
+        if sitename is None:
+            print(f'WARNING: failed to parse {a}: {sitenames=}')
+            sitename = input(f'Enter a sitename for {a}. e.g., Luzon Branch')
+        if shortname is None:
+            print(f'WARNING: failed to parse {a}: {shortname=}')
+            shortname = input(f'Enter a Park shortname for {a}. e.g., Harpers Ferry')
+        if longname is None:
+            print(f'WARNING: failed to parse {a}: {longname=}')
+            longname = input(f'Enter a Park shortname for {a}. e.g., Harpers Ferry National Historical Park')
+        if np.isnan(lat):
+            print(f'WARNING: failed to parse {a}: {lats=}')
+            lat = input(f'Enter a site latitude (dec deg) for {a}. e.g., 38.557744')
+        if np.isnan(lon):
+            print(f'WARNING: failed to parse {a}: {lons=}')
+            lon = input(f'Enter a site latitude (dec deg) for {a}. e.g., -77.792274')
+
+        # assign
+        template['SiteCode'] = sitecode
+        template['SiteCodeWQX'] = sitecodewqx
+        template['ParkCode'] = parkcode
+        template['SiteName'] = sitename
+        template['ShortName'] = shortname
+        template['LongName'] = longname
+        template['Lat'] = lat
+        template['Long'] = lon
+
+        md = pd.concat([md,template]).reset_index(drop=True).sort_values('DataName')
+
+    return md
 
 def water_sites(out_filename:str) -> pd.DataFrame:
     """Make a user-friendly dataframe of NCRN Water monitoring locations
