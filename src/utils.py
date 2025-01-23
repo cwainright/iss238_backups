@@ -689,7 +689,7 @@ def _recode_wqp_chars(wqp:pd.DataFrame) -> pd.DataFrame:
     lu['wqp'] = np.where(lu['ncrn']=='do_concentration','Dissolved oxygen (DO)',lu['wqp'])
     lu['wqp'] = np.where(lu['ncrn']=='do_saturation','Dissolved oxygen saturation',lu['wqp'])
     lu['wqp'] = np.where(lu['ncrn']=='anc','Acid Neutralizing Capacity (ANC)',lu['wqp'])
-    lu['wqp'] = np.where(lu['ncrn']=='stream_physical_appearance','Weather condition (WMO code 4501) (choice list)',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='stream_physical_appearance','Water appearance (text)',lu['wqp'])
     lu['wqp'] = np.where(lu['ncrn']=='tp','Total Phosphorus, mixed forms',lu['wqp'])
     lu['wqp'] = np.where(lu['ncrn']=='ammonia','Ammonia',lu['wqp'])
     lu['wqp'] = np.where(lu['ncrn']=='nitrate','Nitrate',lu['wqp'])
@@ -703,7 +703,7 @@ def _recode_wqp_chars(wqp:pd.DataFrame) -> pd.DataFrame:
     lu['wqp'] = np.where(lu['ncrn']=='orthophosphate','Orthophosphate',lu['wqp'])
     lu['wqp'] = np.where(lu['ncrn']=='tdn','Total Dissolved Nitrogen, mixed forms',lu['wqp']) # there is not a 1:1 equivalent for this in wqp
     lu['wqp'] = np.where(lu['ncrn']=='tdp','Total Dissolved Phosphorus, mixed forms',lu['wqp']) # there is not a 1:1 equivalent for this in wqp
-    lu['wqp'] = np.where(lu['ncrn']=='weather_condition','Water appearance (text)',lu['wqp'])
+    lu['wqp'] = np.where(lu['ncrn']=='weather_condition','Weather condition (WMO code 4501) (choice list)',lu['wqp'])
     lu['wqp'] = np.where(lu['ncrn']=='rain_last_24','RBP2, Weather Condition, Heavy Rain in Last 7 Days, Y/N (choice list)',lu['wqp'])
     lu['wqp'] = np.where(lu['ncrn']=='algae_cover_percent','Substrate algae, % (choice list)',lu['wqp'])
     lu['wqp'] = np.where(lu['ncrn']=='algae_description','Substrate algae color',lu['wqp'])
