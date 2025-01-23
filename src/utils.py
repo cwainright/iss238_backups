@@ -436,10 +436,10 @@ def _wqp_metadata_char_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.Data
     lu[x]['DataType'] = 'numeric'
 
     x ='Substrate algae color'
-    lu[x]['CharacteristicName'] = 'Turbidity'
-    lu[x]['DisplayName'] = 'Turbidity'
-    lu[x]['Category'] = 'Algae'
-    lu[x]['CategoryDisplay'] = 'Algae'
+    lu[x]['CharacteristicName'] = 'AlgaeColor'
+    lu[x]['DisplayName'] = 'Algae Color'
+    lu[x]['Category'] = 'AlgaeColor'
+    lu[x]['CategoryDisplay'] = 'Algae Color'
     lu[x]['Units'] = None
     lu[x]['DataType'] = 'factor'
 
