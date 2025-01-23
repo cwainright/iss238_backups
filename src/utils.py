@@ -363,6 +363,13 @@ def _wqp_metadata_char_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.Data
 
     # adds
     adds = [x for x in df.CharacteristicName.unique() if x not in md.DataName.unique()] # present in df but absent from md
+    sites = md.SiteCodeWQX.unique()
+    # make a row for each add to match a row in template
+    # add that row for every site
+    # is it easier for me to take an existing row and update it? Or start from a template
+    # it's probably easier for me to take one row per site, and update that row
+
+
 
 
     return md
@@ -371,6 +378,7 @@ def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
 
     problems = 0
 
+    # check for prohibited nulls
     non_nullables = [
         'Network'
         ,'ParkCode'
@@ -407,6 +415,30 @@ def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
         if len(sub) > 0:
             print(f'WARNING: conditinally-nullable field {v} was null in {len(sub)} rows of wqp metadata.')
             problems += 1
+
+    # check for incongruencies
+    mismatches = [x for x in md.DataName.unique() if x not in df.CharacteristicName.unique()]
+    if mismatches > 0:
+        problems += len(mismatches)
+        print(f'Metadata characteristics not present in dataframe:')
+        print(mismatches)
+    mismatches = [x for x in df.CharacteristicName.unique() if x not in md.DataName.unique()]
+    if mismatches > 0:
+        problems += len(mismatches)
+        print(f'Dataframe characteristics not present in metadata:')
+        print(mismatches)
+    mismatches = [x for x in df.MonitoringLocationIdentifier.unique() if x not in md.SiteCodeWQX.unique()]
+    if mismatches > 0:
+        problems += len(mismatches)
+        print(f'Dataframe site IDs not present in metadata:')
+        print(mismatches)
+    mismatches = [x for x in md.SiteCodeWQX.unique() if x not in df.MonitoringLocationIdentifier.unique()]
+    if mismatches > 0:
+        problems += len(mismatches)
+        print(f'Metadata site IDs not present in dataframe:')
+        print(mismatches)
+    # TODO:
+    # mismatches between pairs of characteristics/units; do the char/unit pairs in metadata match the ones in wqp?
 
     if problems == 0:
         print("Markdown passed QC...")
