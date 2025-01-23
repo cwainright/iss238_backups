@@ -339,6 +339,32 @@ def wqp_metadata(df:str='data/wqp.csv', write:str='') -> pd.DataFrame:
 
 def _wqp_metadata_char_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.DataFrame:
 
+    # Incongruencies can go in either of two directions: adds or deletes
+    
+    # In this case, a "delete" can be a true delete, or simply an alias that needs updating
+    updates = { # old name : new name
+        'Flow':'Base flow discharge'
+        ,'Algae, substrate rock/bank cover (choice list)':'Substrate algae, % (choice list)'
+        ,'Depth':'Cross-Section Depth'
+        ,'Gran acid neutralizing capacity':'Acid Neutralizing Capacity (ANC)'
+        ,'RBP Stream Velocity': 'Velocity - stream'
+        ,'Stream width measure':'Wetted Width'
+        ,'Stream physical appearance (choice list)':'Water appearance (text)'
+        ,'Flow, severity (choice list)':'Stream flow (choice list)'
+    }
+    for k,v in updates.items():
+        mask = (md['DataName']==k)
+        md['DataName'] = np.where(mask, v, md['DataName'])
+    
+    deletes = [x for x in md.DataName.unique() if x not in df.CharacteristicName.unique() and x not in updates.keys()] # present in md but absent from df; delete or update
+    if len(deletes) > 0:
+        mask = (md['DataName'].isin(deletes)==False)
+        md = md[mask].reset_index(drop=True)
+
+    # adds
+    adds = [x for x in df.CharacteristicName.unique() if x not in md.DataName.unique()] # present in df but absent from md
+
+
     return md
 
 def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
@@ -385,18 +411,8 @@ def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
     if problems == 0:
         print("Markdown passed QC...")
 
-
-
-def _wqp_metadata_site_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.DataFrame:
-
-    # Incongruencies can go in either of two directions: adds or deletes
-    deletes = [x for x in md.SiteCodeWQX.unique() if x not in df.MonitoringLocationIdentifier.unique()] # anything present in md but absent from df should be deleted from md
-    mask = (md['SiteCodeWQX'].isin(deletes)==False)
-    md = md[mask].reset_index(drop=True)
-
-    adds = [x for x in df.MonitoringLocationIdentifier.unique() if x not in md.SiteCodeWQX.unique()] # anything present in df but absent in md should be added to md
+def _metadata_template(md:pd.DataFrame) -> pd.DataFrame:
     
-    # make a template: each site needs the exact columns and rows present in the template
     template = pd.DataFrame(columns=md.columns)
     template['Network'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['Network']
     template['DataName'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['DataName']
@@ -408,6 +424,20 @@ def _wqp_metadata_site_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.Data
     template['Type'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['Type']
     template['DataName'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['DataName']
     template['DataType'] = md[md['SiteCodeWQX']==md['SiteCodeWQX'].unique()[0]]['DataType']
+
+    return template
+
+def _wqp_metadata_site_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.DataFrame:
+
+    # Incongruencies can go in either of two directions: adds or deletes
+    deletes = [x for x in md.SiteCodeWQX.unique() if x not in df.MonitoringLocationIdentifier.unique()] # anything present in md but absent from df should be deleted from md
+    mask = (md['SiteCodeWQX'].isin(deletes)==False)
+    md = md[mask].reset_index(drop=True)
+
+    adds = [x for x in df.MonitoringLocationIdentifier.unique() if x not in md.SiteCodeWQX.unique()] # anything present in df but absent in md should be added to md
+    
+    # make a template: each site needs the exact columns and rows present in the template
+    template = _metadata_template(md)
 
     lu = md[['ParkCode','ShortName','LongName']].drop_duplicates('ShortName')
     # for each site that needs to be added, fill-in the template and append to the metadata file
