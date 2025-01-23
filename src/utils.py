@@ -349,7 +349,7 @@ def _wqp_metadata_char_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.Data
         ,'Gran acid neutralizing capacity':'Acid Neutralizing Capacity (ANC)'
         ,'RBP Stream Velocity': 'Velocity - stream'
         ,'Stream width measure':'Wetted Width'
-        ,'Stream physical appearance (choice list)':'Water appearance (text)'
+        # ,'Stream physical appearance (choice list)':'Water appearance (text)' # this one isn't a simple de-alias, so we'll just delete and then add the corrected-version below
         ,'Flow, severity (choice list)':'Stream flow (choice list)'
     }
     for k,v in updates.items():
@@ -364,13 +364,112 @@ def _wqp_metadata_char_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.Data
     # adds
     adds = [x for x in df.CharacteristicName.unique() if x not in md.DataName.unique()] # present in df but absent from md
     sites = md.SiteCodeWQX.unique()
-    # make a row for each add to match a row in template
-    # add that row for every site
-    # is it easier for me to take an existing row and update it? Or start from a template
-    # it's probably easier for me to take one row per site, and update that row
 
+    start_cols = md.columns
+    # I think it'd be easiest to take one row per site from md
 
+    # then blank-out all of the fields we need to update for each add
+    blanks = [
+        'CharacteristicName'
+        ,'DisplayName'
+        ,'DataName'
+        ,'Category'
+        ,'CategoryDisplay'
+        ,'Units'
+        ,'LowerPoint'
+        ,'UpperPoint'
+        ,'DataType'
+        ,'LowerDescription'
+        ,'UpperDescription'
+        ,'AssessmentDetails'
+    ]
+    
+    # Then populate the blanks from wqp
 
+    # since only one field (units) can even come from the wqp, just make a lookup
+    # this lookup has to be maintened through time
+    lu = {}
+    for a in adds:
+        tmp = {x:None for x in blanks}
+        tmp['DataName'] = a
+        lu[a] = tmp
+
+    # hard-code the lookup values
+    x = 'Total Nitrogen, mixed forms'
+    lu[x]['CharacteristicName'] = 'TotalN'
+    lu[x]['DisplayName'] = 'Total Nitrogen'
+    lu[x]['Category'] = 'TotalN'
+    lu[x]['CategoryDisplay'] = 'Total Nitrogen'
+    lu[x]['Units'] = df[df['CharacteristicName']==x]['ResultMeasure/MeasureUnitCode'].unique()[0]
+    lu[x]['DataType'] = 'numeric'
+    
+    x ='Total Dissolved Nitrogen, mixed forms'
+    lu[x]['CharacteristicName'] = 'TotalDN'
+    lu[x]['DisplayName'] = 'Total Dissolved Nitrogen'
+    lu[x]['Category'] = 'TotalDN'
+    lu[x]['CategoryDisplay'] = 'Total Dissolved Nitrogen'
+    lu[x]['Units'] = df[df['CharacteristicName']==x]['ResultMeasure/MeasureUnitCode'].unique()[0]
+    lu[x]['DataType'] = 'numeric'
+
+    x ='Total Dissolved Phosphorus, mixed forms'
+    lu[x]['CharacteristicName'] = 'TotalDP'
+    lu[x]['DisplayName'] = 'Total Dissolved Phosphorus'
+    lu[x]['Category'] = 'TotalDP'
+    lu[x]['CategoryDisplay'] = 'Total Dissolved Phosphorus'
+    lu[x]['Units'] = df[df['CharacteristicName']==x]['ResultMeasure/MeasureUnitCode'].unique()[0]
+    lu[x]['DataType'] = 'numeric'
+
+    x ='Chlorine'
+    lu[x]['CharacteristicName'] = 'Chlorine'
+    lu[x]['DisplayName'] = 'Chlorine'
+    lu[x]['Category'] = 'Chlorine'
+    lu[x]['CategoryDisplay'] = 'Chlorine'
+    lu[x]['Units'] = df[df['CharacteristicName']==x]['ResultMeasure/MeasureUnitCode'].unique()[0]
+    lu[x]['DataType'] = 'numeric'
+
+    x ='Turbidity'
+    lu[x]['CharacteristicName'] = 'Turbidity'
+    lu[x]['DisplayName'] = 'Turbidity'
+    lu[x]['Category'] = 'Turbidity'
+    lu[x]['CategoryDisplay'] = 'Turbidity'
+    lu[x]['Units'] = df[df['CharacteristicName']==x]['ResultMeasure/MeasureUnitCode'].unique()[0]
+    lu[x]['DataType'] = 'numeric'
+
+    x ='Substrate algae color'
+    lu[x]['CharacteristicName'] = 'Turbidity'
+    lu[x]['DisplayName'] = 'Turbidity'
+    lu[x]['Category'] = 'Algae'
+    lu[x]['CategoryDisplay'] = 'Algae'
+    lu[x]['Units'] = None
+    lu[x]['DataType'] = 'factor'
+
+    x ='Water appearance (text)'
+    lu[x]['CharacteristicName'] = 'WaterAppearance'
+    lu[x]['DisplayName'] = 'Water Appearance'
+    lu[x]['Category'] = 'WaterAppearance'
+    lu[x]['CategoryDisplay'] = 'Water Appearance'
+    lu[x]['Units'] = None
+    lu[x]['DataType'] = 'factor'
+
+    # then add those rows back to md
+    # and repeat that process for every add
+    for k,v in lu.items():
+        for b in blanks:
+            template = md[md['DataName']==md.DataName.unique()[0]].copy().reset_index(drop=True) # make a "template" 1-row dataframe with the correct columns
+            mask = (template[b].isna()==False)
+            template[b] = np.where(mask, None, template[b]) # blank-out all of the columns that are present in the lookup `lu`
+        for x,y in v.items():
+            template[x] = y # now fill-in the blanks from `lu`
+        # print(template.to_string())
+        md = pd.concat([md, template]).reset_index(drop=True).sort_values(['SiteCodeWQX','Category']) # and append the filled-in template to `md`
+
+    end_cols = md.columns
+    if len(start_cols) != len(end_cols): # sanity check; we should not be adding or deleting any columns
+        print(f'WARNING: _wqp_metadata_char_incongruency() added {len(end_cols)-len(start_cols)} columns:')
+        if len(start_cols) > len(end_cols):
+            print([x for x in start_cols if x not in end_cols])
+        else:
+            print([x for x in end_cols if x not in start_cols])
 
     return md
 
@@ -418,25 +517,26 @@ def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
 
     # check for incongruencies
     mismatches = [x for x in md.DataName.unique() if x not in df.CharacteristicName.unique()]
-    if mismatches > 0:
+    if len(mismatches) > 0:
         problems += len(mismatches)
         print(f'Metadata characteristics not present in dataframe:')
         print(mismatches)
     mismatches = [x for x in df.CharacteristicName.unique() if x not in md.DataName.unique()]
-    if mismatches > 0:
+    if len(mismatches) > 0:
         problems += len(mismatches)
         print(f'Dataframe characteristics not present in metadata:')
         print(mismatches)
     mismatches = [x for x in df.MonitoringLocationIdentifier.unique() if x not in md.SiteCodeWQX.unique()]
-    if mismatches > 0:
+    if len(mismatches) > 0:
         problems += len(mismatches)
         print(f'Dataframe site IDs not present in metadata:')
         print(mismatches)
     mismatches = [x for x in md.SiteCodeWQX.unique() if x not in df.MonitoringLocationIdentifier.unique()]
-    if mismatches > 0:
+    if len(mismatches) > 0:
         problems += len(mismatches)
         print(f'Metadata site IDs not present in dataframe:')
         print(mismatches)
+
     # TODO:
     # mismatches between pairs of characteristics/units; do the char/unit pairs in metadata match the ones in wqp?
 
