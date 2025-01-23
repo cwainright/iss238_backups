@@ -540,6 +540,11 @@ def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
     # TODO:
     # mismatches between pairs of characteristics/units; do the char/unit pairs in metadata match the ones in wqp?
 
+    # spot-fixes
+    # replace mg/l and ueq/l (lower-case 'L') with mg/L and ueq/L (capital 'L')
+    mask = (md['Units'].str.contains('/l'))
+    md['Units'] = np.where(mask, md['Units'].str.replace('/l', '/L'), md['Units'])
+
     if problems == 0:
         print("Markdown passed QC...")
 
@@ -819,9 +824,11 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
                 except:
                     print(f"WARNING! Calculated column `xwalk['{k}']['{x}']`, code line `{y}` failed.")
     
-    # TODO: re-code the characteristic names
     wqp = _recode_wqp_chars(wqp=wqp)
-    # TODO: write to csv if test_run == False
+
+    # TODO: write wqp csv if test_run == False
+    # TODO: make metadata and write metadata to the same file as wqp csv
+    # md = wqp_metadata()
 
     return wqp
 
