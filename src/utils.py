@@ -746,7 +746,7 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             'OrganizationIdentifier':'NCRN'
             ,'OrganizationFormalName':'National Park Service Inventory and Monitoring Division'
             ,'ActivityTypeCode':'Field Msr/Obs'
-            ,'ActivityMediaName':'Water'
+            # ,'ActivityMediaName':'Water'
             ,'ActivityEndDate':np.NaN
             ,'ActivityEndTime/Time':np.NaN
             ,'ActivityEndTime/TimeZoneCode':None
@@ -811,6 +811,7 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
         }
         ,'calculated':{ # columns that need to be re-calculated each time the dataset is produced
             'ResultIdentifier':'wqp["ResultIdentifier"]=wqp.index'
+            ,'ActivityMediaName' : "wqp['ActivityMediaName'] = np.where(wqp['CharacteristicName'].isin(['air_temperature', 'barometric_pressure', 'weather_condition']), 'Air', 'Water')"
             # ,'ActivityIdentifier':'wqp["ActivityIdentifier"]=wqp["ActivityMediaSubdivisionName"]+"|"+wqp["ResultAnalyticalMethod/MethodIdentifier"]'
         }
     }
