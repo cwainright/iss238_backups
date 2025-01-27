@@ -474,8 +474,21 @@ def _wqp_metadata_char_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.Data
     return md
 
 def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
-
     problems = 0
+    
+    # Replace greenbelt with NACE
+    mask = (md['ParkCode']=='GREE')
+    cols = ['ShortName','LongName','ParkCode'] # column-order matters here; must do ParkCode last
+    for col in cols:
+        tmp = None
+        tmps = md[md['ParkCode']=='NACE'][col].unique()
+        if len(tmps) == 1:
+            tmp = tmps[0]
+        else:
+            problems+=1
+            print(f'WARNING: failed to assign {col} for Greenbelt')
+            print(tmps)
+        md[col] = np.where(mask, tmp, md[col])
 
     # check for prohibited nulls
     non_nullables = [
