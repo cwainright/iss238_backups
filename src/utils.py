@@ -332,9 +332,9 @@ def wqp_metadata(df:str='data/wqp.csv', write:str='') -> pd.DataFrame:
 
     if write != '':
         md.to_csv(write, index=False)
-        print("Wrote WQP Metadata to: {write}")
-
-    print("WQP Metadata dataframe returned")
+        print(f"\nWrote WQP Metadata to: {write}\n")
+    else:
+        print("WQP Metadata dataframe returned")
     return md
 
 def _wqp_metadata_char_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.DataFrame:
@@ -840,6 +840,13 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
     wqp = _recode_wqp_chars(wqp=wqp)
 
     # TODO: write wqp csv if test_run == False
+    if test_run == False:
+        fname = f'{newest_data_folder}\\wqp.csv'
+        wqp.to_csv(fname, index=False)
+        print(f'\nWrote wqp to: {fname}\n')
+        mdfname = f'{newest_data_folder}\\wqp_ncrnwater_metadata.csv'
+        md = wqp_metadata(df=fname, write=mdfname)
+
     # TODO: make metadata and write metadata to the same file as wqp csv
     # md = wqp_metadata()
 
