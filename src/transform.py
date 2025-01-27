@@ -934,3 +934,32 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
     
     return df
     
+def _add_methodspeciationname(df:pd.DataFrame) -> pd.DataFrame:
+
+    before_len = len(df)
+    before_cols = len(df.columns)
+    lu = {}
+    lu['tp'] = {'MethodSpeciationName': 'as P', 'ResultSampleFractionText': 'Unfiltered'}
+    lu['ammonia'] = {'MethodSpeciationName': 'as N', 'ResultSampleFractionText': 'Filtered, Lab'}
+    lu['nitrate'] = {'MethodSpeciationName': 'as N', 'ResultSampleFractionText': 'Filtered, Lab'}
+    lu['tn'] = {'MethodSpeciationName': 'as N', 'ResultSampleFractionText': 'Unfiltered'}
+    lu['orthophosphate'] = {'MethodSpeciationName': 'as PO4', 'ResultSampleFractionText': 'Filtered, Lab'}
+    lu['tdn'] = {'MethodSpeciationName': 'as N', 'ResultSampleFractionText': 'Filtered, Lab'}
+    lu['tdp'] = {'MethodSpeciationName': 'as P', 'ResultSampleFractionText': 'Filtered, Lab'}
+    
+    ludf = pd.DataFrame(columns=['Characteristic_Name','MethodSpeciationName','ResultSampleFractionText'])
+    ludf['Characteristic_Name'] = lu.keys()
+    for k,v in lu.items():
+        mask = ludf['Characteristic_Name']==k
+        ludf['MethodSpeciationName'] = np.where(mask, v['MethodSpeciationName'], ludf['MethodSpeciationName'])
+        ludf['ResultSampleFractionText'] = np.where(mask, v['ResultSampleFractionText'], ludf['ResultSampleFractionText'])
+    
+    df = pd.merge(df, ludf, how='left', on='Characteristic_Name')
+
+    after_len = len(df)
+    after_cols = len(df.columns)
+
+    assert before_len == after_len # sanity check
+    assert after_cols == before_cols+2 # sanity check
+
+    return df

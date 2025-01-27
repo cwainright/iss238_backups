@@ -712,6 +712,7 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
     df = tf._quality_control(df)
     df = _wqp_qc(df=df)
     df = tf._assign_activity_id(df=df)
+    df = tf._add_methodspeciationname(df=df)
 
     # import the example file
     example:pd.DataFrame = pd.read_csv(assets.EXAMPLE_WQX_WQP, nrows=1)
@@ -740,6 +741,8 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             ,'ResultMeasure/MeasureUnitCode':'Result_Unit'
             ,'ResultAnalyticalMethod/MethodIdentifier':'grouping_var'
             ,'LaboratoryName':'lab'
+            ,'MethodSpeciationName':'MethodSpeciationName'
+            ,'ResultSampleFractionText':'ResultSampleFractionText'
         }
         ,'constants':{ # columns that are constants and need to repeat nrow times in the output wqp dataframe
             # colname from wqp : value to assign to that column
@@ -770,8 +773,8 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             ,'SampleCollectionMethod/MethodName':np.NaN
             ,'SampleCollectionMethod/MethodDescriptionText':np.NaN
             ,'SampleCollectionEquipmentName':None
-            ,'MethodSpeciationName':None
-            ,'ResultSampleFractionText':None
+            # ,'MethodSpeciationName':None
+            # ,'ResultSampleFractionText':None
             ,'MeasureQualifierCode':None
             ,'ResultStatusIdentifier':'Final'
             ,'StatisticalBaseCode':None
