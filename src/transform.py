@@ -279,6 +279,15 @@ def _transform_tbl_main(tbl_main:pd.DataFrame, include_deletes:bool) -> pd.DataF
     tfm_tbl_main = tfm_tbl_main[constants.FLAT_COLS]
     tfm_tbl_main = _apply_data_flags(tfm_tbl_main, tbl_main)
 
+    wquantity_chars = [
+        'discharge'
+        ,'mean_crossection_depth'
+        ,'wetted_width'
+        ,'mean_velocity'
+        ]
+    mask = (tfm_tbl_main['Characteristic_Name'].isin(wquantity_chars))
+    tfm_tbl_main['discharge_instrument'] = np.where(mask, tfm_tbl_main['discharge_instrument'], None)
+
     return tfm_tbl_main
 
 def _transform_tbl_grabsample(tbl_grabsample:pd.DataFrame, include_deletes:bool) -> pd.DataFrame:
