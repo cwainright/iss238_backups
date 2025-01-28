@@ -3,6 +3,7 @@
 import pandas as pd
 import numpy as np
 import src.assets as assets
+import src.constants as constants
 
 def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
 
@@ -17,7 +18,7 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     # clean
     excludes = ['x','y','entry_anc_btl_size','entry_other_nutrient_btl_size','entry_other_anc_btl_size','entry_nutrient_btl_size','entry_algae_description', 'entry_other_algae_description','entry_q_instrument','entry_other_q_instrument','entry_ysi_probe','entry_other_ysi_probe','entry_ysi_increment','entry_other_ysi_increment','entry_other_lab','entry_lab','duplicate_collected']
     # excludes.extend([x for x in df.Characteristic_Name if 'flag'])
-    mask = (df['Characteristic_Name'].isin(excludes)==False) & (df['Characteristic_Name'].isin(assets.SITE_VISIT_COLS)==False) & (df['Characteristic_Name'].str.contains('delete')==False) & (df['Characteristic_Name'].str.contains('flag')==False)
+    mask = (df['Characteristic_Name'].isin(excludes)==False) & (df['Characteristic_Name'].isin(constants.SITE_VISIT_COLS)==False) & (df['Characteristic_Name'].str.contains('delete')==False) & (df['Characteristic_Name'].str.contains('flag')==False)
     df = df[mask]
     df.reset_index(drop=True, inplace=True)
 
@@ -169,7 +170,7 @@ def _calc_week_of_year(df:pd.DataFrame) -> pd.DataFrame:
 
 def _transform_site_visits(tbl:pd.DataFrame, include_deletes:bool) -> pd.DataFrame:
 
-    site_visits = tbl[assets.SITE_VISIT_COLS].copy()
+    site_visits = tbl[constants.SITE_VISIT_COLS].copy()
     site_visits.rename(columns={'GlobalID':'SiteVisitGlobalID'}, inplace=True)
 
     # filter out soft-deleted records
@@ -186,7 +187,7 @@ def _transform_tbl_ysi(tbl_ysi:pd.DataFrame, include_deletes:bool) -> pd.DataFra
     ]
     ID_COLS = MAIN_COLS.copy()
     excludes = ['objectid', 'globalid', 'parentglobalid']
-    excludes.extend(assets.SITE_VISIT_COLS)
+    excludes.extend(constants.SITE_VISIT_COLS)
     adds = [x for x in tbl_ysi.columns if x.lower() not in excludes]
     MAIN_COLS.extend(adds)
     ID_COLS.extend(['ysi_increment','ysi_probe'])
@@ -202,10 +203,10 @@ def _transform_tbl_ysi(tbl_ysi:pd.DataFrame, include_deletes:bool) -> pd.DataFra
     tfm_tbl_ysi = tbl_ysi.melt(id_vars=ID_COLS, value_vars=VALUE_COLS, var_name='Characteristic_Name',value_name='Result_Text')
     tfm_tbl_ysi = pd.merge(tfm_tbl_ysi, lookup, on='GlobalID')
     tfm_tbl_ysi['grouping_var'] = 'NCRN_WQ_WQUALITY'
-    for c in assets.FLAT_COLS:
+    for c in constants.FLAT_COLS:
         if c not in tfm_tbl_ysi.columns:
             tfm_tbl_ysi[c] = None
-    tfm_tbl_ysi = tfm_tbl_ysi[assets.FLAT_COLS]
+    tfm_tbl_ysi = tfm_tbl_ysi[constants.FLAT_COLS]
     tfm_tbl_ysi = _apply_data_flags(tfm_tbl_ysi, tbl_ysi)
 
     return tfm_tbl_ysi
@@ -217,7 +218,7 @@ def _transform_tbl_main(tbl_main:pd.DataFrame, include_deletes:bool) -> pd.DataF
         'GlobalID'
     ]
     ID_COLS = MAIN_COLS.copy()
-    adds = [x for x in tbl_main.columns if x.lower() != 'objectid' and x not in assets.SITE_VISIT_COLS]
+    adds = [x for x in tbl_main.columns if x.lower() != 'objectid' and x not in constants.SITE_VISIT_COLS]
     MAIN_COLS.extend(adds)
 
     # filter out soft-deleted records
@@ -264,10 +265,10 @@ def _transform_tbl_main(tbl_main:pd.DataFrame, include_deletes:bool) -> pd.DataF
                 mask = (tfm_tbl_main['Characteristic_Name']==c)
                 tfm_tbl_main['grouping_var'] = np.where(mask, k, tfm_tbl_main['grouping_var'])
 
-    for c in assets.FLAT_COLS:
+    for c in constants.FLAT_COLS:
         if c not in tfm_tbl_main.columns:
             tfm_tbl_main[c] = None
-    tfm_tbl_main = tfm_tbl_main[assets.FLAT_COLS]
+    tfm_tbl_main = tfm_tbl_main[constants.FLAT_COLS]
     tfm_tbl_main = _apply_data_flags(tfm_tbl_main, tbl_main)
 
     return tfm_tbl_main
@@ -280,7 +281,7 @@ def _transform_tbl_grabsample(tbl_grabsample:pd.DataFrame, include_deletes:bool)
     ]
     ID_COLS = MAIN_COLS.copy()
     excludes = ['objectid', 'globalid', 'parentglobalid']
-    excludes.extend(assets.SITE_VISIT_COLS)
+    excludes.extend(constants.SITE_VISIT_COLS)
     adds = [x for x in tbl_grabsample.columns if x.lower() not in excludes]
     MAIN_COLS.extend(adds)
     ID_COLS.extend(['lab','anc_method'])
@@ -296,10 +297,10 @@ def _transform_tbl_grabsample(tbl_grabsample:pd.DataFrame, include_deletes:bool)
     tfm_tbl_grabsample = tbl_grabsample.melt(id_vars=ID_COLS, value_vars=VALUE_COLS, var_name='Characteristic_Name',value_name='Result_Text')
     tfm_tbl_grabsample = pd.merge(tfm_tbl_grabsample, lookup, on='GlobalID')
     tfm_tbl_grabsample['grouping_var'] = 'NCRN_WQ_WCHEM'
-    for c in assets.FLAT_COLS:
+    for c in constants.FLAT_COLS:
         if c not in tfm_tbl_grabsample.columns:
             tfm_tbl_grabsample[c] = None
-    tfm_tbl_grabsample = tfm_tbl_grabsample[assets.FLAT_COLS]
+    tfm_tbl_grabsample = tfm_tbl_grabsample[constants.FLAT_COLS]
     mask = (tfm_tbl_grabsample['lab']=='CUE') & (tfm_tbl_grabsample['Characteristic_Name']=='anc')
     tfm_tbl_grabsample['anc_method'] = np.where(mask, tfm_tbl_grabsample['anc_method'], None)
     tfm_tbl_grabsample = _apply_data_flags(tfm_tbl_grabsample, tbl_grabsample)
@@ -315,7 +316,7 @@ def _apply_data_flags(tfm_tbl:pd.DataFrame, tbl:pd.DataFrame) -> pd.DataFrame:
     ]
     ID_COLS = MAIN_COLS.copy()
     flags = [x for x in tbl.columns if 'flag' in x.lower()]
-    adds = [x for x in tbl.columns if x.lower() != 'objectid' and x not in assets.SITE_VISIT_COLS and x not in flags]
+    adds = [x for x in tbl.columns if x.lower() != 'objectid' and x not in constants.SITE_VISIT_COLS and x not in flags]
     flags.extend(['GlobalID'])
     MAIN_COLS.extend(adds)
 
