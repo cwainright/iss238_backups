@@ -47,7 +47,7 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     df['instrument'] = None
     mask = (df['grouping_var']=='NCRN_WQ_WQUANTITY')
     df['instrument'] = np.where(mask, df['discharge_instrument'], df['ysi_probe'])
-    
+
     df = df.reset_index(drop=True)
 
     # assign activity_id
@@ -98,8 +98,8 @@ def _assign_activity_id(df:pd.DataFrame) -> pd.DataFrame:
     mask = (df['grouping_var']=='NCRN_WQ_HABINV') # i.e., site observations
     df['activity_id'] = np.where(mask, df['activity_group_id']+'|'+df['grouping_var'], df['activity_id'])
 
-    mask = (df['grouping_var']=='NCRN_WQ_WQUANTITY') # i.e., flowtracker characteristics
-    df['activity_id'] = np.where(mask, df['activity_group_id']+'|'+df['grouping_var'], df['activity_id'])
+    mask = (df['grouping_var']=='NCRN_WQ_WQUANTITY') & (df['discharge_instrument'].isna()==False)# i.e., flowtracker characteristics
+    df['activity_id'] = np.where(mask, df['activity_group_id']+'|'+df['grouping_var']+'|'+df['discharge_instrument'], df['activity_id'])
 
     mask = (df['grouping_var']=='NCRN_WQ_WQUALITY') & (df['sampleability']=='Actively Sampled') & (df['ysi_probe'].isna()==False) & (df['ysi_increment'].isna()==False) # i.e., ysi characteristics
     df['activity_id'] = np.where(mask, df['activity_group_id']+'|'+df['grouping_var']+'|'+df['ysi_probe']+'|'+df['ysi_increment'], df['activity_id'])
