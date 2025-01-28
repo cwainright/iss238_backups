@@ -743,6 +743,7 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             ,'LaboratoryName':'lab'
             ,'MethodSpeciationName':'MethodSpeciationName'
             ,'ResultSampleFractionText':'ResultSampleFractionText'
+            ,'SampleCollectionEquipmentName':'instrument'
         }
         ,'constants':{ # columns that are constants and need to repeat nrow times in the output wqp dataframe
             # colname from wqp : value to assign to that column
@@ -772,7 +773,7 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             ,'SampleCollectionMethod/MethodIdentifierContext':None
             ,'SampleCollectionMethod/MethodName':np.NaN
             ,'SampleCollectionMethod/MethodDescriptionText':np.NaN
-            ,'SampleCollectionEquipmentName':None
+            # ,'SampleCollectionEquipmentName':None
             # ,'MethodSpeciationName':None
             # ,'ResultSampleFractionText':None
             ,'MeasureQualifierCode':None

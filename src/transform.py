@@ -42,6 +42,12 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     ignores = ['anc_method','landuse_category','dom_riparian_ter_veg_sp','channelized','bank_stability','entry_stream_phy_appear']
     mask = (df['Characteristic_Name'].isin(ignores)==False)
     df = df[mask]
+
+    # make one column out of df.ysi_probe and df.discharge_instrument
+    df['instrument'] = None
+    mask = (df['grouping_var']=='NCRN_WQ_WQUANTITY')
+    df['instrument'] = np.where(mask, df['discharge_instrument'], df['ysi_probe'])
+    
     df = df.reset_index(drop=True)
 
     # assign activity_id
