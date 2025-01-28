@@ -220,6 +220,14 @@ def _transform_tbl_main(tbl_main:pd.DataFrame, include_deletes:bool) -> pd.DataF
     ID_COLS = MAIN_COLS.copy()
     adds = [x for x in tbl_main.columns if x.lower() != 'objectid' and x not in constants.SITE_VISIT_COLS]
     MAIN_COLS.extend(adds)
+    ID_COLS.extend(['discharge_instrument'])
+
+    # To move something from a row to a column:
+    # For example, if discharge_instrument is not in ID_COLS, when you melt, it'll be a row instead of a column
+    # You can move things from rows to columns (i.e., from being a result to being an attribute of a result)
+    # to do this, you need to:
+    # 1. add the Characteristic_Name to the above ID_COLS.extend() call
+    # 2. add the Characteristic_Name to src.constants.FLAT_COLS
 
     # filter out soft-deleted records
     if include_deletes==False:
@@ -256,7 +264,7 @@ def _transform_tbl_main(tbl_main:pd.DataFrame, include_deletes:bool) -> pd.DataF
             ,'flowtracker_notes'
             ,'wetted_width'
             ,'tape_offset'
-            ,'discharge_instrument'
+            # ,'discharge_instrument'
         ]
     }
     for c in tfm_tbl_main.Characteristic_Name.unique():
@@ -406,7 +414,7 @@ def _apply_data_types(tfm_tbl:pd.DataFrame) -> pd.DataFrame:
        'do_concentration', 'do_saturation', 'tds', 'ysi_increment_notes',
        'duplicate_y_n', 'lab', 'anc_bottle_size', 'nutrient_bottle_size',
        'anc', 'tn', 'tp', 'ammonia', 'orthophosphate', 'chlorine',
-       'nitrate','anc_method']
+       'nitrate','anc_method','discharge_instrument']
 
     # for x in mycols:
     #     print(f"lookup['{x}'] = ['',None]")
@@ -448,6 +456,7 @@ def _apply_data_types(tfm_tbl:pd.DataFrame) -> pd.DataFrame:
     lookup['skip_req_photo'] = ['string',None]
     lookup['skip_req_photo_reason'] = ['string',None]
     lookup['ysi_probe'] = ['string',None]
+    lookup['discharge_instrument'] = ['string',None]
     lookup['ysi_increment'] = ['string',None]
     lookup['ysi_increment_distance'] = ['float','ft']
     lookup['water_temperature'] = ['float','deg C']
