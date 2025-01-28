@@ -779,7 +779,7 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             ,'MeasureQualifierCode':None
             ,'ResultStatusIdentifier':'Final'
             ,'StatisticalBaseCode':None
-            ,'ResultValueTypeName':'Actual'
+            # ,'ResultValueTypeName':'Actual'
             ,'ResultWeightBasisText':None
             ,'ResultTemperatureBasisText':None
             ,'ResultParticleSizeBasisText':None
@@ -817,6 +817,7 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             'ResultIdentifier':'wqp["ResultIdentifier"]=wqp.index'
             ,'ActivityMediaName' : "wqp['ActivityMediaName'] = np.where(wqp['CharacteristicName'].isin(['air_temperature', 'barometric_pressure', 'weather_condition']), 'Air', 'Water')"
             ,'ActivityTypeCode' : "wqp['ActivityTypeCode'] = np.where(wqp['ResultAnalyticalMethod/MethodIdentifier']=='NCRN_WQ_WCHEM', 'Sample-Routine', 'Field Msr/Obs')"
+            ,'ResultValueTypeName': "wqp['ResultValueTypeName'] = np.where(wqp['SampleCollectionEquipmentName'] == 'calculated_result','Calculated','Actual')"
             # ,'ActivityIdentifier':'wqp["ActivityIdentifier"]=wqp["ActivityMediaSubdivisionName"]+"|"+wqp["ResultAnalyticalMethod/MethodIdentifier"]'
         }
     }
