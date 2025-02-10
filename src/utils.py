@@ -328,7 +328,7 @@ def wqp_metadata(df:str='data/wqp.csv', write:str='') -> pd.DataFrame:
     # 2.b. Fix incongruencies: CharacteristicNames
     md = _wqp_metadata_char_incongruency(df, md)
 
-    _wqp_metadata_qc(df, md)
+    md = _wqp_metadata_qc(df, md)
 
     if write != '':
         md.to_csv(write, index=False)
@@ -558,8 +558,20 @@ def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
     mask = (md['Units'].str.contains('/l'))
     md['Units'] = np.where(mask, md['Units'].str.replace('/l', '/L'), md['Units'])
 
+    typos = {
+        'Air Temperture':'Air Temperature'
+        ,'Dishcarge':'Discharge'
+    }
+    for k,v in typos.items():
+        mask = (md['DisplayName']==k)
+        md['DisplayName'] = np.where(mask, v, md['DisplayName'])
+
     if problems == 0:
-        print("Markdown passed QC...")
+        print("Metadata file passed QC...")
+    else:
+        print("Metadata file failed QC!")
+
+    return md
 
 def _metadata_template(md:pd.DataFrame) -> pd.DataFrame:
     
