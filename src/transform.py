@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import src.assets as assets
 import src.constants as constants
+import datetime as dt
 
 def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
 
@@ -39,14 +40,12 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     df = _soft_constraints(df)
     mask = (df['Characteristic_Name'].str.contains('_notes')==False)
     df = df[mask]
+
+    df = _make_instrument_column(df)
+
     ignores = ['anc_method','landuse_category','dom_riparian_ter_veg_sp','channelized','bank_stability','entry_stream_phy_appear']
     mask = (df['Characteristic_Name'].isin(ignores)==False)
     df = df[mask]
-
-    # make one column out of df.ysi_probe and df.discharge_instrument
-    df['instrument'] = None
-    mask = (df['grouping_var']=='NCRN_WQ_WQUANTITY')
-    df['instrument'] = np.where(mask, df['discharge_instrument'], df['ysi_probe'])
 
     df = df.reset_index(drop=True)
 
@@ -54,6 +53,138 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
     # df = _assign_activity_id(df=df) # this only makes sense for verified records
 
     return df
+
+def _make_instrument_column(df:pd.DataFrame) -> pd.DataFrame:
+    """Make a column called `instrument` to carry an attribute about the method and/or equipment used for a result
+
+    Instrument is a grouping variable and its purpose is to let users group and filter records if they need or want to include records from specific collection-methods.
+    Users will probably want to group and filter by combining `instrument` with another column, like `grouping_var` or `Characteristic_Name`
+    because `instrument` is an attribute of a result, and [grouping_var, Characteristic_Name] are also result-grouping variables.
+
+    Args:
+        df (pd.DataFrame): flattened NCRN water rescords without an `instrument` column
+
+    Returns:
+        pd.DataFrame: flattened NCRN water rescords with an `instrument` column
+    """
+
+    # make one column out of df.ysi_probe and df.discharge_instrument
+    df['instrument'] = None
+    mask = (df['grouping_var']=='NCRN_WQ_WQUANTITY')
+    df['instrument'] = np.where(mask, df['discharge_instrument'], df['ysi_probe'])
+
+    # resolve grabsamples 2016 through June 2024
+    # assign method for grabsamples when we know the earliest and latest instance of a method
+    # find the documented earliest and latest 
+    res = pd.read_csv(r'data\NCRN_Water_New_Nutrient_Data_20240710.csv')
+    res = res[['Source Lab', 'New LocID', 'Sample ID','Sample Date','Parameter','Result', 'Method']]
+    lu = {}
+    for param in res.Parameter.unique():
+        mask = (res['Parameter']==param)
+        paramlower = str(param).lower()
+        lu[paramlower] = {}
+        methods = res[mask].Method.unique()
+        for method in methods:
+            mask = (res['Parameter']==param) & (res['Method']==method)
+            mindate = dt.datetime.strptime(min(res[mask]['Sample Date']), '%Y-%m-%d %H:%M:%S')
+            maxdate = dt.datetime.strptime(max(res[mask]['Sample Date']), '%Y-%m-%d %H:%M:%S')
+            timediff = maxdate-mindate
+            if timediff >dt.timedelta(minutes=0): # some methods were seemingly used for one day only, which makes no sense
+            # maxdate = min(res[mask]['Sample Date'])
+                lu[paramlower][method] = {'mindate':mindate, 'maxdate':maxdate}
+    
+    for paramlower, x in lu.items():
+        for method, dates in x.items():
+            mask = (df['Characteristic_Name']==paramlower) & (pd.to_datetime(df['activity_start_date']) >= dates['mindate']) & (pd.to_datetime(df['activity_start_date']) <= dates['maxdate'])
+            # print(f'{paramlower} - {method}: {dates["mindate"]} through {dates["maxdate"]}')
+            df['instrument'] = np.where(mask, method, df['instrument'])
+    
+    # clean up what our lookup table cannot resolve
+    # the lookup can only resolve cases 2016 through June 2024, because that's when NCRN switched to a lab that reported the method at the result-level and NCRN appended rows to a lab results spreadsheet (instead of in the db)
+
+    # Resolve cases >= June 2024
+    lu = {}
+    for param in res.Parameter.unique():
+        mask = (res['Parameter']==param)
+        paramlower = str(param).lower()
+        lu[paramlower] = {}
+        methods = res[mask].Method.unique()
+        for method in methods:
+            mask = (res['Parameter']==param) & (res['Method']==method)
+            # mindate = dt.datetime.strptime(min(res[mask]['Sample Date']), '%Y-%m-%d %H:%M:%S')
+            mindate = dt.datetime.strptime(max(res[mask]['Sample Date']), '%Y-%m-%d %H:%M:%S')
+            timediff = maxdate-mindate
+            if mindate > dt.datetime(2024,4,1,0,0): # some methods were seemingly used for one day only, which makes no sense
+            # maxdate = min(res[mask]['Sample Date'])
+                lu[paramlower][method] = {'mindate':mindate}
+    
+    for paramlower, x in lu.items():
+        for method, dates in x.items():
+            mask = (df['Characteristic_Name']==paramlower) & (pd.to_datetime(df['activity_start_date']) >= dates['mindate'])
+            # print(f'{paramlower} - {method}: greater than {dates["mindate"]}')
+            df['instrument'] = np.where(mask, method, df['instrument'])
+
+
+    # Resolve cases <= 2016, we have to bulk-update per the source below
+    # source: https://doimspp.sharepoint.com/:w:/r/sites/NCRNWater/Shared%20Documents/General/Water%20QC%20Project/Equipment%20%26%20Parameter%20History.docx?d=w1ccac4c8ba9844289c8c403c58c0b5c8&csf=1&web=1&e=QGxEgX
+    lu = {}
+    params = [
+        'anc'
+        ,'tp'
+        ,'ammonia'
+        ,'nitrate'
+        ,'tn' 
+        ,'orthophosphate'
+        ,'tdn'
+        ,'tdp'
+    ]
+    for paramlower in params:
+        lu[paramlower] = {}
+    basecase_date = min(res['Sample Date'])
+    lu['anc']['Hach 8203'] = {'mindate':None, 'maxdate':basecase_date}
+    lu['tp']['Hach 8190 and 8178'] = {'mindate':None, 'maxdate':dt.datetime.strptime(min(df[(df['Characteristic_Name']=='tp')&(df['num_result'].isna()==False)].activity_start_date.unique()),"%Y-%m-%d")}
+    lu['tp']['Hach 8190'] = {'mindate':dt.datetime.strptime(min(df[(df['Characteristic_Name']=='tp')&(df['num_result'].isna()==False)].activity_start_date.unique()),"%Y-%m-%d"), 'maxdate':basecase_date}
+    lu['orthophosphate']['Hach 8048'] = {'mindate':dt.datetime.strptime(min(df[(df['Characteristic_Name']=='orthophosphate')&(df['num_result'].isna()==False)].activity_start_date.unique()),"%Y-%m-%d"), 'maxdate':dt.datetime.strptime(max(df[(df['Characteristic_Name']=='orthophosphate')&(df['num_result'].isna()==False)].activity_start_date.unique()),"%Y-%m-%d")}
+    lu['nitrate']['Hach 8039, 8171, and 8192'] = {'mindate':None, 'maxdate':dt.datetime(2008,1,1,0,0)}
+    lu['nitrate']['Hach 10020'] = {'mindate':dt.datetime(2008,1,1,0,0), 'maxdate':None}
+    lu['ammonia']['Hach TNT830'] = {'mindate':dt.datetime.strptime(min(df[(df['Characteristic_Name']=='ammonia')&(df['num_result'].isna()==False)].activity_start_date.unique()),"%Y-%m-%d"), 'maxdate':dt.datetime.strptime(max(df[(df['Characteristic_Name']=='ammonia')&(df['num_result'].isna()==False)].activity_start_date.unique()),"%Y-%m-%d")}
+
+    for paramlower, x in lu.items():
+        for method, dates in x.items():
+            print(f'{paramlower} - {method}: {dates["mindate"]} through {dates["maxdate"]}')
+
+    for paramlower, x in lu.items():
+        for method, dates in x.items():
+            if dates['mindate'] is None: # 
+                mask = (df['Characteristic_Name']==paramlower) & (pd.to_datetime(df['activity_start_date']) <= dates['maxdate'])
+                # print(f'{paramlower} - {method}: greater than {dates["mindate"]}')
+                df['instrument'] = np.where(mask, method, df['instrument'])
+            elif dates['maxdate'] is None:
+                mask = (df['Characteristic_Name']==paramlower) & (pd.to_datetime(df['activity_start_date']) >= dates['mindate'])
+                # print(f'{paramlower} - {method}: greater than {dates["mindate"]}')
+                df['instrument'] = np.where(mask, method, df['instrument'])
+            else:
+                mask = (df['Characteristic_Name']==paramlower) & (pd.to_datetime(df['activity_start_date']) <= dates['maxdate']) & (pd.to_datetime(df['activity_start_date']) >= dates['mindate'])
+                # print(f'{paramlower} - {method}: greater than {dates["mindate"]}')
+                df['instrument'] = np.where(mask, method, df['instrument'])
+
+
+    # clean up
+    mask = (df['anc_method'].isna()==False) & (df['Characteristic_Name']=='anc')
+    df['instrument'] = np.where(mask, df['anc_method'], df['instrument'])
+    mask = (df['anc_method'].isna()) & (df['Characteristic_Name']=='anc') & (df['lab']=='CUE')
+    df['instrument'] = np.where(mask, 'Hach 8203', df['instrument'])
+
+    mask = (df['Characteristic_Name']==paramlower) & (pd.to_datetime(df['activity_start_date']) <= dates['maxdate']) & (pd.to_datetime(df['activity_start_date']) >= dates['mindate'])
+    # print(f'{paramlower} - {method}: greater than {dates["mindate"]}')
+    df['instrument'] = np.where(mask, method, df['instrument'])
+
+    # sanity check
+    mask = (df['instrument'].isna()) & (df['Characteristic_Name'].isin(params))
+    missingvals = df[mask]
+
+    return df
+
 
 def _assign_activity_id(df:pd.DataFrame) -> pd.DataFrame:
 
