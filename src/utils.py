@@ -558,6 +558,9 @@ def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
     mask = (md['Units'].str.contains('/l'))
     md['Units'] = np.where(mask, md['Units'].str.replace('/l', '/L'), md['Units'])
 
+    mask = (md['SiteCode']=='NCRN_PRWI_NFQC')
+    md['SiteName'] = np.where(mask, 'North Fork Quantico Creek', md['SiteName']) # was erroneously labelled 'Quantico Creek'
+
     typos = {
         'Air Temperture':'Air Temperature'
         ,'Dishcarge':'Discharge'
