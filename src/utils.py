@@ -747,7 +747,7 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             ,'ActivityStartTime/TimeZoneCode':'timezone'
             ,'MonitoringLocationIdentifier':'location_id'
             ,'MonitoringLocationName':'ncrn_site_name'
-            ,'ActivityCommentText':'site_visit_notes'
+            # ,'ActivityCommentText':'site_visit_notes'
             ,'ActivityLocation/LatitudeMeasure':'ncrn_latitude'
             ,'ActivityLocation/LongitudeMeasure':'ncrn_longitude'
             ,'ResultDetectionConditionText':'data_quality_flag'
@@ -764,7 +764,7 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             # colname from wqp : value to assign to that column
             'OrganizationIdentifier':'NCRN'
             ,'OrganizationFormalName':'National Park Service Inventory and Monitoring Division'
-            # ,'ActivityTypeCode':'Field Msr/Obs'
+            ,'ActivityCommentText':None # do not export comments
             # ,'ActivityMediaName':'Water'
             ,'ActivityEndDate':np.NaN
             ,'ActivityEndTime/Time':np.NaN
@@ -792,7 +792,7 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             # ,'MethodSpeciationName':None
             # ,'ResultSampleFractionText':None
             ,'MeasureQualifierCode':None
-            ,'ResultStatusIdentifier':'Final'
+            # ,'ResultCommentText':'Final'
             ,'StatisticalBaseCode':None
             # ,'ResultValueTypeName':'Actual'
             ,'ResultWeightBasisText':None
