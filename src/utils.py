@@ -321,6 +321,7 @@ def wqp_metadata(df:str='data/wqp.csv', write:str='') -> pd.DataFrame:
     # 1. read csvs
     md = pd.read_csv(r'data/MetaData.csv', encoding = "ISO-8859-1")
     df = pd.read_csv(df)
+    df = df[df['CharacteristicName']!= 'Chlorine']
     md['SiteCodeWQX'] = md['SiteCode'] # preprocess; NCRN no longer maintains two site-naming-conventions
 
     # 2.a. Fix incongruencies: Site names
@@ -419,13 +420,13 @@ def _wqp_metadata_char_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.Data
     lu[x]['Units'] = df[df['CharacteristicName']==x]['ResultMeasure/MeasureUnitCode'].unique()[0]
     lu[x]['DataType'] = 'numeric'
 
-    x ='Chlorine'
-    lu[x]['CharacteristicName'] = 'Chlorine'
-    lu[x]['DisplayName'] = 'Chlorine'
-    lu[x]['Category'] = 'Chlorine'
-    lu[x]['CategoryDisplay'] = 'Chlorine'
-    lu[x]['Units'] = df[df['CharacteristicName']==x]['ResultMeasure/MeasureUnitCode'].unique()[0]
-    lu[x]['DataType'] = 'numeric'
+    # x ='Chlorine'
+    # lu[x]['CharacteristicName'] = 'Chlorine'
+    # lu[x]['DisplayName'] = 'Chlorine'
+    # lu[x]['Category'] = 'Chlorine'
+    # lu[x]['CategoryDisplay'] = 'Chlorine'
+    # lu[x]['Units'] = df[df['CharacteristicName']==x]['ResultMeasure/MeasureUnitCode'].unique()[0]
+    # lu[x]['DataType'] = 'numeric'
 
     x ='Turbidity'
     lu[x]['CharacteristicName'] = 'Turbidity'
@@ -920,7 +921,7 @@ def _recode_wqp_chars(wqp:pd.DataFrame) -> pd.DataFrame:
     lu['wqp'] = np.where(lu['ncrn']=='algae_cover_percent','Substrate algae, % (choice list)',lu['wqp'])
     lu['wqp'] = np.where(lu['ncrn']=='algae_description','Substrate algae color',lu['wqp'])
     lu['wqp'] = np.where(lu['ncrn']=='flow_status','Stream flow (choice list)',lu['wqp'])
-    lu['wqp'] = np.where(lu['ncrn']=='chlorine','Chlorine',lu['wqp'])
+    # lu['wqp'] = np.where(lu['ncrn']=='chlorine','Chlorine',lu['wqp'])
     lu['wqp'] = np.where(lu['ncrn']=='turbidity','Turbidity',lu['wqp'])
 
     # sanity check that the lu is complete
@@ -966,6 +967,7 @@ def _wqp_qc(df:pd.DataFrame) -> pd.DataFrame:
         ,'ysi_probe'
         ,'tape_offset'
         ,'rain_last_24'
+        ,'chlorine'
     ]
     mask = (df['Characteristic_Name'].isin(excludes)==False)
     df = df[mask]
