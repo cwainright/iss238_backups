@@ -804,6 +804,7 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             ,'DataQuality/UpperConfidenceLimitValue':np.NaN
             ,'DataQuality/LowerConfidenceLimitValue':np.NaN
             ,'ResultCommentText':None
+            ,'ResultStatusIdentifier':'Final'
             ,'USGSPCode':None
             ,'ResultDepthHeightMeasure/MeasureValue':np.NaN
             ,'ResultDepthHeightMeasure/MeasureUnitCode':None
