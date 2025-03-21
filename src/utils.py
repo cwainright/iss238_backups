@@ -955,6 +955,7 @@ def _wqp_qc(df:pd.DataFrame) -> pd.DataFrame:
     df = df[df['review_status']=='verified']
     df.reset_index(inplace=True, drop=True)
 
+    # exclude characteristics by name
     excludes = [
         'left_bank_riparian_width'
         ,'right_bank_riparian_width'
@@ -971,6 +972,33 @@ def _wqp_qc(df:pd.DataFrame) -> pd.DataFrame:
     ]
     mask = (df['Characteristic_Name'].isin(excludes)==False)
     df = df[mask]
+
+    # re-code lab names per time period
+    # activity_start_date < 2016-10-01 ~'CUE'
+    cue_end = dt.date(2016,10,1)
+    mask_cue = (pd.to_datetime(df['activity_start_date']).dt.date < cue_end) & (df['grouping_var']=='NCRN_WQ_WCHEM')
+    # activity_start_date >= 2016-10-01 & activity_start_date <= '2020-01-01 ~ 'CBL'
+    cbl_start = cue_end
+    cbl_end = dt.date(2020,1,1)
+    mask_cbl = (pd.to_datetime(df['activity_start_date']).dt.date >= cbl_start) & (pd.to_datetime(df['activity_start_date']).dt.date <= cbl_end) & (df['grouping_var']=='NCRN_WQ_WCHEM')
+    # activity_start_date > 2020-01-01 ~ 'AL'
+    al_start = cbl_end
+    mask_al = (pd.to_datetime(df['activity_start_date']).dt.date > al_start) & (df['grouping_var']=='NCRN_WQ_WCHEM')
+
+    df['lab'] = np.where(mask_cue, 'CUE', df['lab'])
+    df['lab'] = np.where(mask_cbl, 'CBL', df['lab'])
+    df['lab'] = np.where(mask_al, 'AL', df['lab'])
+
+    # remove CUE phosphorus results
+    phosphorus_chars = ['orthophosphate', 'tp', 'tdp', 'ammonia']
+    mask = (df['lab']=='CUE') & (df['Characteristic_Name'].isin(phosphorus_chars))
+    df = df[~mask]
+
+    # remove CUE nitrogen results
+    nitrogen_chars = ['nitrate', 'tn', 'tdn']
+    mask = (df['lab']=='CUE') & (df['Characteristic_Name'].isin(nitrogen_chars))
+    df = df[~mask]
+
     df.reset_index(inplace=True, drop=True)
 
     return df
