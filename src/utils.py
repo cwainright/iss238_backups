@@ -481,14 +481,31 @@ def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
     problems = 0
     
     # are any combinations of site and characteristics missing?
+    sites_missing = {}
     ancr = md[md['SiteCode']=='NCRN_ANTI_ANCR'].CharacteristicName.unique()
     for site in md.SiteCode.unique():
         mask = (md['SiteCode']==site)
         subset = md[mask]
         chars = subset.CharacteristicName.unique()
         if len(chars) != 28:
+            missing_chars = [x for x in ancr if x not in chars]
             print(f"Site {site} has {len(chars)} characteristics instead of 28")
-            print(f"    Missing: {[x for x in ancr if x not in chars]}")
+            print(f"    Missing: {missing_chars}")
+            sites_missing[site] = missing_chars
+    
+    # find neighbors: another site in that park that has the rows we need
+    for k,v in sites_missing.items():
+        park = k.split('_')[1]
+        for char in v:
+            mask = (md['SiteCode'].str.contains(park)) & (md['CharacteristicName']==char)
+            neighbors = md[mask]
+            if len(neighbors) == 0:
+                print(f'FAIL: {k} has no neighbors with the characteristic {char}')
+            else:
+                newrow = neighbors.iloc[0].copy()# copy those rows
+                # print(newrow)
+                # TODO: update the name attributes
+                # TODO: append the copied rows back to `md`
     
     
     # Replace greenbelt with NACE
@@ -575,6 +592,9 @@ def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
 
     mask = (md['SiteCode']=='NCRN_PRWI_NFQC')
     md['SiteName'] = np.where(mask, 'North Fork Quantico Creek', md['SiteName']) # was erroneously labelled 'Quantico Creek'
+
+    mask = (md['SiteCode']=='NCRN_PRWI_MBBR')
+    md['SiteName'] = np.where(mask, 'Mary Byrd Branch', md['SiteName'])
 
     typos = {
         'Air Temperture':'Air Temperature'
