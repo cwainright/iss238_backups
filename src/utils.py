@@ -318,9 +318,12 @@ def wqp_metadata(df:str='data/wqp.csv', write:str='') -> pd.DataFrame:
     if write != '':
         assert write.endswith('.csv')
 
+    newest_data_folder:str = _find_newest_folder(assets.DM_WATER_BACKUP_FPATH) # find the newest timestamp folder
+    df_filepath = os.path.join(newest_data_folder, 'wqp.csv')
+
     # 1. read csvs
     md = pd.read_csv(r'data/MetaData.csv', encoding = "ISO-8859-1")
-    df = pd.read_csv(df)
+    df = pd.read_csv(df_filepath)
     df = df[df['CharacteristicName']!= 'Chlorine']
     md['SiteCodeWQX'] = md['SiteCode'] # preprocess; NCRN no longer maintains two site-naming-conventions
 
@@ -476,6 +479,17 @@ def _wqp_metadata_char_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.Data
 
 def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
     problems = 0
+    
+    # are any combinations of site and characteristics missing?
+    ancr = md[md['SiteCode']=='NCRN_ANTI_ANCR'].CharacteristicName.unique()
+    for site in md.SiteCode.unique():
+        mask = (md['SiteCode']==site)
+        subset = md[mask]
+        chars = subset.CharacteristicName.unique()
+        if len(chars) != 28:
+            print(f"Site {site} has {len(chars)} characteristics instead of 28")
+            print(f"    Missing: {[x for x in ancr if x not in chars]}")
+    
     
     # Replace greenbelt with NACE
     mask = (md['ParkCode']=='GREE')
