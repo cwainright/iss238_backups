@@ -1166,6 +1166,11 @@ def _wqp_qc(df:pd.DataFrame) -> pd.DataFrame:
     mask = (pd.to_datetime(df['activity_start_date']).dt.date >= cutoff_date) & (df['data_quality_flag']=='present_not_on_datasheet') & (df['instrument']=='calculated_result')
     # mask = (pd.to_datetime(df['ActivityStartDate']).dt.date >= cutoff_date) & (df['ResultDetectionConditionText']=='present_not_on_datasheet') & (df['SampleCollectionEquipmentName']=='calculated_result')
     df['data_quality_flag'] = np.where(mask, None, df['data_quality_flag'])
+    # QA results
+    # When these results are part of the 'QA' increment for the YSI, we will remove the flag, export the result, and indicate 'QA' in the appropriate WQP column
+    mask = (df['ysi_increment_notes'].str.contains('QA')) & (df['grouping_var']=='NCRN_WQ_WQUALITY') & (df['data_quality_flag']=='present_not_on_datasheet')
+    # mask = (df['ResultDetectionConditionText']=='QA; repeated sample at same location')
+    df['data_quality_flag'] = np.where(mask, 'QA; repeated sample at same location', df['data_quality_flag'])
 
     df.reset_index(inplace=True, drop=True)
 

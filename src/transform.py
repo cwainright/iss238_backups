@@ -327,7 +327,7 @@ def _transform_tbl_ysi(tbl_ysi:pd.DataFrame, include_deletes:bool) -> pd.DataFra
     excludes.extend(constants.SITE_VISIT_COLS)
     adds = [x for x in tbl_ysi.columns if x.lower() not in excludes]
     MAIN_COLS.extend(adds)
-    ID_COLS.extend(['ysi_increment','ysi_probe'])
+    ID_COLS.extend(['ysi_increment','ysi_probe','ysi_increment_notes'])
     lookup = tbl_ysi[['GlobalID','ParentGlobalID']]
 
     # filter out soft-deleted records
@@ -1097,7 +1097,7 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
         print(f'WARNING: {len(problems.activity_group_id.unique())} verified activity_group_ids has results flagged "present_not_on_datasheet" but the result was calculated in the db.\nResolve these warnings by updating the notes in S123')
         print("Find all instances: mask = (pd.to_datetime(df['activity_start_date']).dt.date >= dt.date(2007,12,18)) & (df['data_quality_flag']=='present_not_on_datasheet') & (df['instrument']=='calculated_result')")
         print('E.g.,')
-        mycols = ['activity_group_id','record_reviewers','review_status','review_date','instrument','data_quality_flag',]
+        mycols = ['activity_group_id','record_reviewers','review_status','review_date','instrument','data_quality_flag','Characteristic_Name','num_result']
         if len(problems) < 20:
             for x in problems.activity_group_id.unique():
                 mask = (problems['activity_group_id']==x)

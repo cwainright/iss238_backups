@@ -76,4 +76,5 @@ FLAT_COLS = [
     ,'grouping_var'
     ,'Characteristic_Name'
     ,'Result_Text'
+    ,'ysi_increment_notes'
     ]
