@@ -477,7 +477,7 @@ def _wqp_metadata_char_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.Data
 
     return md
 
-def _wqp_qc_repair_missing_sitechar_combinations(md:pd.DataFrame) -> pd.DataFrame:
+def _wqp_metadata_qc_repair_missing_sitechar_combinations(md:pd.DataFrame) -> pd.DataFrame:
 
     before_len = len(md)
 
@@ -545,13 +545,8 @@ def _wqp_qc_repair_missing_sitechar_combinations(md:pd.DataFrame) -> pd.DataFram
 
     return md
 
-def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
-    problems = 0
-    
-    # are any combinations of site and characteristics missing?
-    md = _wqp_qc_repair_missing_sitechar_combinations(md)
-    
-    # Replace greenbelt with NACE
+def _wqp_metadata_qc_greenbelt(md:pd.DataFrame) -> pd.DataFrame:
+
     mask = (md['ParkCode']=='GREE')
     cols = ['ShortName','LongName','ParkCode'] # column-order matters here; must do ParkCode last
     for col in cols:
@@ -564,6 +559,40 @@ def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
             print(f'WARNING: failed to assign {col} for Greenbelt')
             print(tmps)
         md[col] = np.where(mask, tmp, md[col])
+
+    return md
+
+def _wqp_metadata_qc_spot_fixes(md:pd.DataFrame) -> pd.DataFrame:
+
+    # replace mg/l and ueq/l (lower-case 'L') with mg/L and ueq/L (capital 'L')
+    mask = (md['Units'].str.contains('/l'))
+    md['Units'] = np.where(mask, md['Units'].str.replace('/l', '/L'), md['Units'])
+
+    mask = (md['SiteCode']=='NCRN_PRWI_NFQC')
+    md['SiteName'] = np.where(mask, 'North Fork Quantico Creek', md['SiteName']) # was erroneously labelled 'Quantico Creek'
+
+    mask = (md['SiteCode']=='NCRN_PRWI_MBBR')
+    md['SiteName'] = np.where(mask, 'Mary Byrd Branch', md['SiteName'])
+
+    typos = {
+        'Air Temperture':'Air Temperature'
+        ,'Dishcarge':'Discharge'
+    }
+    for k,v in typos.items():
+        mask = (md['DisplayName']==k)
+        md['DisplayName'] = np.where(mask, v, md['DisplayName'])
+
+    return md
+
+def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
+    problems = 0
+    
+    # are any combinations of site and characteristics missing?
+    md = _wqp_metadata_qc_repair_missing_sitechar_combinations(md)
+    
+    # Replace greenbelt with NACE
+    md = _wqp_metadata_qc_greenbelt(md)
+
 
     # check for prohibited nulls
     non_nullables = [
@@ -629,23 +658,9 @@ def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
     # mismatches between pairs of characteristics/units; do the char/unit pairs in metadata match the ones in wqp?
 
     # spot-fixes
-    # replace mg/l and ueq/l (lower-case 'L') with mg/L and ueq/L (capital 'L')
-    mask = (md['Units'].str.contains('/l'))
-    md['Units'] = np.where(mask, md['Units'].str.replace('/l', '/L'), md['Units'])
+    md = _wqp_metadata_qc_spot_fixes(md)
 
-    mask = (md['SiteCode']=='NCRN_PRWI_NFQC')
-    md['SiteName'] = np.where(mask, 'North Fork Quantico Creek', md['SiteName']) # was erroneously labelled 'Quantico Creek'
-
-    mask = (md['SiteCode']=='NCRN_PRWI_MBBR')
-    md['SiteName'] = np.where(mask, 'Mary Byrd Branch', md['SiteName'])
-
-    typos = {
-        'Air Temperture':'Air Temperature'
-        ,'Dishcarge':'Discharge'
-    }
-    for k,v in typos.items():
-        mask = (md['DisplayName']==k)
-        md['DisplayName'] = np.where(mask, v, md['DisplayName'])
+    md = md.sort_values(['SiteCode','CharacteristicName'])
 
     if problems == 0:
         print("Metadata file passed QC...")
