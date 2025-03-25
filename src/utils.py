@@ -584,6 +584,64 @@ def _wqp_metadata_qc_spot_fixes(md:pd.DataFrame) -> pd.DataFrame:
 
     return md
 
+def _wqp_metadata_qc_check_sitechar_combinations(md:pd.DataFrame, df:pd.DataFrame) -> int:
+    """Check that every combination of site and characteristic in df exists in metadata
+
+    Args:
+        md (pd.DataFrame): NCRNWater-formatted metadata file
+        df (pd.DataFrame): wqp-formatted data file
+
+    Returns:
+        int: the count of missing characteristic/site combinations
+    """
+    # find all combinations of Characteristic in df
+    assert len(df[df['MonitoringLocationIdentifier'].isna() | df['CharacteristicName'].isna()]) == 0
+    df2 = df[['MonitoringLocationIdentifier','CharacteristicName']].drop_duplicates(['MonitoringLocationIdentifier','CharacteristicName'])
+    df2['key'] = df2['MonitoringLocationIdentifier'] + df2['CharacteristicName']
+
+    # find all combinations of Characteristic in md
+    assert len(md[md['SiteCode'].isna() | md['DataName'].isna()]) == 0
+    md2 = md[['SiteCode', 'DataName']].drop_duplicates(['SiteCode','DataName'])
+    md2['key'] = md2['SiteCode'] + md2['DataName']
+
+    # does every combination in df exist in md?
+    missing = [x for x in df2.key.unique() if x not in md2.key.unique()]
+    if len(missing) >0:
+        print(f"WARNING: there are {len(missing)} missing characteristic and site combinations in the metadata file!")
+        for x in missing:
+            print(x)
+
+    return len(missing)
+
+def _wqp_metadata_qc_check_charunit_combinations(md:pd.DataFrame, df:pd.DataFrame) -> int:
+    """Check that every combination of characteristic and unit in df exists in metadata
+
+    Args:
+        md (pd.DataFrame): NCRNWater-formatted metadata file
+        df (pd.DataFrame): wqp-formatted data file
+
+    Returns:
+        int: the count of missing characteristic/unit combinations
+    """
+    # find all combinations of Characteristic in df
+    assert len(df[df['MonitoringLocationIdentifier'].isna() | df['CharacteristicName'].isna()]) == 0
+    df2 = df[['MonitoringLocationIdentifier','CharacteristicName']].drop_duplicates(['MonitoringLocationIdentifier','CharacteristicName'])
+    df2['key'] = df2['MonitoringLocationIdentifier'] + df2['CharacteristicName']
+
+    # find all combinations of Characteristic in md
+    assert len(md[md['SiteCode'].isna() | md['DataName'].isna()]) == 0
+    md2 = md[['SiteCode', 'DataName']].drop_duplicates(['SiteCode','DataName'])
+    md2['key'] = md2['SiteCode'] + md2['DataName']
+
+    # does every combination in df exist in md?
+    missing = [x for x in df2.key.unique() if x not in md2.key.unique()]
+    if len(missing) >0:
+        print(f"WARNING: there are {len(missing)} missing characteristic and site combinations in the metadata file!")
+        for x in missing:
+            print(x)
+
+    return len(missing)
+
 def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
     problems = 0
     
@@ -654,11 +712,12 @@ def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
         print(f'Metadata site IDs not present in dataframe:')
         print(mismatches)
 
-    # TODO:
-    # mismatches between pairs of characteristics/units; do the char/unit pairs in metadata match the ones in wqp?
-
     # spot-fixes
     md = _wqp_metadata_qc_spot_fixes(md)
+
+    # mismatches between pairs of characteristics/units; do the char/unit pairs in metadata match the ones in wqp?
+    problems+=_wqp_metadata_qc_check_sitechar_combinations(md,df)
+    # problems+=_wqp_metadata_qc_check_charunit_combinations(md,df) # commented because units use different charsets, e.g., u versus `mu`
 
     md = md.sort_values(['SiteCode','CharacteristicName'])
 
