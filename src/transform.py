@@ -1088,6 +1088,26 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
                 mask = (problems['activity_group_id']==x)
                 print(problems[mask][mycols])
     
+    # warn if results are flagged 'present_not_on_datasheet' but they're calculated results
+    cutoff_date = dt.date(2007,12,18)
+    mask = (pd.to_datetime(df['activity_start_date']).dt.date >= cutoff_date) & (df['data_quality_flag']=='present_not_on_datasheet') & (df['instrument']=='calculated_result')
+    problems = df[mask].drop_duplicates('activity_group_id').copy()
+    if len(problems) > 0:
+        print("--------------------------------------------------------------------------------")
+        print(f'WARNING: {len(problems.activity_group_id.unique())} verified activity_group_ids has results flagged "present_not_on_datasheet" but the result was calculated in the db.\nResolve these warnings by updating the notes in S123')
+        print("Find all instances: mask = (pd.to_datetime(df['activity_start_date']).dt.date >= dt.date(2007,12,18)) & (df['data_quality_flag']=='present_not_on_datasheet') & (df['instrument']=='calculated_result')")
+        print('E.g.,')
+        mycols = ['activity_group_id','record_reviewers','review_status','review_date','instrument','data_quality_flag',]
+        if len(problems) < 20:
+            for x in problems.activity_group_id.unique():
+                mask = (problems['activity_group_id']==x)
+                print(problems[mask][mycols])
+        else:
+            print(f'There are {len(problems)} warnings. Printing the first 20 site visits...')
+            for x in problems.activity_group_id.unique()[:20]:
+                mask = (problems['activity_group_id']==x)
+                print(problems[mask][mycols])
+    
     return df
     
 def _add_methodspeciationname(df:pd.DataFrame) -> pd.DataFrame:

@@ -1151,11 +1151,21 @@ def _wqp_qc(df:pd.DataFrame) -> pd.DataFrame:
     df = df[~mask]
 
     # case-statements to fix flagging ambiguity
+    
     # 'equipment_malfunction'
     # When the result is flagged as 'equipment_malfunction', the result should be updated to NA.
     mask = (df['data_quality_flag']=='equipment_malfunction') & (df['Result_Text'].isna()==False)
+    # mask = (df['ResultDetectionConditionText']=='equipment_malfunction') & (df['ResultMeasureValue'].isna()==False)
     df['Result_Text'] = np.where(mask, None, df['Result_Text'])
 
+    # present_not_on_datasheet
+    # Calculated results. 2007-12-18 is the earliest site visit with the "new" style of pdf.
+    # For >=2007-12-18, calculated results do not need to be flagged. update the flag to NA
+    # For <2007-12-18, calculated results need to be flagged
+    cutoff_date = dt.date(2007,12,18)
+    mask = (pd.to_datetime(df['activity_start_date']).dt.date >= cutoff_date) & (df['data_quality_flag']=='present_not_on_datasheet') & (df['instrument']=='calculated_result')
+    # mask = (pd.to_datetime(df['ActivityStartDate']).dt.date >= cutoff_date) & (df['ResultDetectionConditionText']=='present_not_on_datasheet') & (df['SampleCollectionEquipmentName']=='calculated_result')
+    df['data_quality_flag'] = np.where(mask, None, df['data_quality_flag'])
 
     df.reset_index(inplace=True, drop=True)
 
