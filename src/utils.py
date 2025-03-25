@@ -912,6 +912,8 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             ,'MethodSpeciationName':'MethodSpeciationName'
             ,'ResultSampleFractionText':'ResultSampleFractionText'
             ,'SampleCollectionEquipmentName':'instrument'
+            ,'DetectionQuantitationLimitMeasure/MeasureValue':'quantlimit'
+            ,'DetectionQuantitationLimitMeasure/MeasureUnitCode':'quantlimitunit'
         }
         ,'constants':{ # columns that are constants and need to repeat nrow times in the output wqp dataframe
             # colname from wqp : value to assign to that column
@@ -975,8 +977,8 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             ,'ResultLaboratoryCommentText':None
             ,'ResultDetectionQuantitationLimitUrl':None
             ,'DetectionQuantitationLimitTypeName':None
-            ,'DetectionQuantitationLimitMeasure/MeasureValue':np.NaN # TODO: update with real values
-            ,'DetectionQuantitationLimitMeasure/MeasureUnitCode':None
+            # ,'DetectionQuantitationLimitMeasure/MeasureValue':np.NaN # TODO: update with real values
+            # ,'DetectionQuantitationLimitMeasure/MeasureUnitCode':None
             ,'LabSamplePreparationUrl':None
             ,'LastUpdated':dt.datetime.now()
             ,'ProviderName':'National Park Service Inventory and Monitoring Division'

@@ -54,6 +54,222 @@ def _transform(df_dict:dict, include_deletes:bool) -> pd.DataFrame:
 
     return df
 
+def _add_quantitationlimit(df:pd.DataFrame) -> pd.DataFrame:
+
+    df['quantlimit'] = np.NaN
+    df['quantlimitunit'] = None
+    
+    # flags = [
+    #     'present_less_than_ql'
+    #     ,'value_below_rl_actual_reported'
+    #     ,'value_below_mdl_actual_reported'
+    #     ,'value_below_mdl_method_limit_reported'
+    # ]
+
+    # df[df['ResultDetectionConditionText'].isin(flags)][['SampleCollectionEquipmentName','CharacteristicName']].drop_duplicates(['SampleCollectionEquipmentName','CharacteristicName'])
+    # this is the lookup table we need:
+    # 1831                      EPA 365.1          Total Phosphorus, mixed forms
+    # 5310                     Hach 10020                                Nitrate
+    # 6446             APHA 4500-P J-2017          Total Phosphorus, mixed forms
+    # 7912                      EPA 353.2  Total Dissolved Nitrogen, mixed forms
+    # 48466                     Hach 8203       Acid Neutralizing Capacity (ANC)
+    # 48992                     EPA 353.2            Total Nitrogen, mixed forms
+    # 49076                  usgs_f3_gran       Acid Neutralizing Capacity (ANC)
+    # 50685               usgs_inflection       Acid Neutralizing Capacity (ANC)
+    # 52315            APHA 4500-P J-2017            Total Nitrogen, mixed form
+
+    lu = {}
+
+    # phosphorus
+    lu['EPA 365.1']={}
+    lu['EPA 365.1']['tp'] = {}
+    lu['EPA 365.1']['tp']['uppervalue'] = np.NaN
+    lu['EPA 365.1']['tp']['lowervalue'] = 0.0015
+    lu['EPA 365.1']['tp']['units'] = 'mg/L'
+
+    lu['EPA 365.1']['tdp'] = {}
+    lu['EPA 365.1']['tdp']['uppervalue'] = np.NaN
+    lu['EPA 365.1']['tdp']['lowervalue'] = 0.0015
+    lu['EPA 365.1']['tdp']['units'] = 'mg/L'
+
+    lu['APHA 4500-P J-2017'] = {}
+    lu['APHA 4500-P J-2017']['tp'] = {}
+    lu['APHA 4500-P J-2017']['tp']['uppervalue'] = np.NaN
+    lu['APHA 4500-P J-2017']['tp']['lowervalue'] = 0.01
+    lu['APHA 4500-P J-2017']['tp']['units'] = 'mg/L'
+
+    lu['APHA 4500-P J-2018'] = {}
+    lu['APHA 4500-P J-2018']['tp'] = {}
+    lu['APHA 4500-P J-2018']['tp']['uppervalue'] = np.NaN
+    lu['APHA 4500-P J-2018']['tp']['lowervalue'] = 0.01
+    lu['APHA 4500-P J-2018']['tp']['units'] = 'mg/L'
+
+    lu['APHA 4500-P J-2019'] = {}
+    lu['APHA 4500-P J-2019']['tp'] = {}
+    lu['APHA 4500-P J-2019']['tp']['uppervalue'] = np.NaN
+    lu['APHA 4500-P J-2019']['tp']['lowervalue'] = 0.01
+    lu['APHA 4500-P J-2019']['tp']['units'] = 'mg/L'
+
+    # nitrogen
+    lu['EPA 353.2'] = {}
+    lu['EPA 353.2']['tn'] = {}
+    lu['EPA 353.2']['tn']['uppervalue'] = np.NaN
+    lu['EPA 353.2']['tn']['lowervalue'] = 0.05
+    lu['EPA 353.2']['tn']['units'] = 'mg/L'
+
+    lu['EPA 353.2']['tdn'] = {}
+    lu['EPA 353.2']['tdn']['uppervalue'] = np.NaN
+    lu['EPA 353.2']['tdn']['lowervalue'] = 0.05
+    lu['EPA 353.2']['tdn']['units'] = 'mg/L'
+
+    lu['APHA 4500-P J-2017'] = {}
+    lu['APHA 4500-P J-2017']['tn'] = {}
+    lu['APHA 4500-P J-2017']['tn']['uppervalue'] = np.NaN
+    lu['APHA 4500-P J-2017']['tn']['lowervalue'] = 0.1
+    lu['APHA 4500-P J-2017']['tn']['units'] = 'mg/L'
+
+    lu['APHA 4500-P J-2018'] = {}
+    lu['APHA 4500-P J-2018']['tn'] = {}
+    lu['APHA 4500-P J-2018']['tn']['uppervalue'] = np.NaN
+    lu['APHA 4500-P J-2018']['tn']['lowervalue'] = 0.1
+    lu['APHA 4500-P J-2018']['tn']['units'] = 'mg/L'
+    
+    lu['APHA 4500-P J-2019'] = {}
+    lu['APHA 4500-P J-2019']['tn'] = {}
+    lu['APHA 4500-P J-2019']['tn']['uppervalue'] = np.NaN
+    lu['APHA 4500-P J-2019']['tn']['lowervalue'] = 0.1
+    lu['APHA 4500-P J-2019']['tn']['units'] = 'mg/L'
+
+    lu['Hach 10020'] = {}
+    lu['Hach 10020']['nitrate'] = {}
+    lu['Hach 10020']['nitrate']['uppervalue'] = 30
+    lu['Hach 10020']['nitrate']['lowervalue'] = 0.2
+    lu['Hach 10020']['nitrate']['units'] = 'mg/L'
+
+    # anc
+    lu['Hach 8203'] = {}
+    lu['Hach 8203']['anc'] = {}
+    lu['Hach 8203']['anc']['uppervalue'] = 4000
+    lu['Hach 8203']['anc']['lowervalue'] = 10
+    lu['Hach 8203']['anc']['units'] = 'ueq/L'
+
+    lu['usgs_f3_gran'] = {}
+    lu['usgs_f3_gran']['anc'] = {}
+    lu['usgs_f3_gran']['anc']['uppervalue'] = np.NaN
+    lu['usgs_f3_gran']['anc']['lowervalue'] = np.NaN
+    lu['usgs_f3_gran']['anc']['units'] = 'ueq/L'
+
+    lu['usgs_inflection'] = {}
+    lu['usgs_inflection']['anc'] = {}
+    lu['usgs_inflection']['anc']['uppervalue'] = np.NaN
+    lu['usgs_inflection']['anc']['lowervalue'] = np.NaN
+    lu['usgs_inflection']['anc']['units'] = 'ueq/L'
+
+    lu['USGS I-2522-90'] = {}
+    lu['USGS I-2522-90']['anc'] = {}
+    lu['USGS I-2522-90']['anc']['uppervalue'] = np.NaN
+    lu['USGS I-2522-90']['anc']['lowervalue'] = np.NaN
+    lu['USGS I-2522-90']['anc']['units'] = 'ueq/L'
+
+    # bonus rounds
+    lu['Hach 8190 and 8178'] = {}
+    lu['Hach 8190 and 8178']['anc'] = {}
+    lu['Hach 8190 and 8178']['anc']['uppervalue'] = 30
+    lu['Hach 8190 and 8178']['anc']['lowervalue'] = 0.23
+    lu['Hach 8190 and 8178']['anc']['units'] = 'mg/L'
+
+    lu['Hach 8190'] = {}
+    lu['Hach 8190']['anc'] = {}
+    lu['Hach 8190']['anc']['uppervalue'] = 30
+    lu['Hach 8190']['anc']['lowervalue'] = 0.23
+    lu['Hach 8190']['anc']['units'] = 'mg/L'
+
+    lu['Hach 8190'] = {}
+    lu['Hach 8190']['tp'] = {}
+    lu['Hach 8190']['tp']['uppervalue'] = 3.5
+    lu['Hach 8190']['tp']['lowervalue'] = 0.06
+    lu['Hach 8190']['tp']['units'] = 'mg/L'
+
+    lu['Hach 8039, 8171, and 8192'] = {}
+    lu['Hach 8039, 8171, and 8192']['nitrate'] = {}
+    lu['Hach 8039, 8171, and 8192']['nitrate']['uppervalue'] = 30
+    lu['Hach 8039, 8171, and 8192']['nitrate']['lowervalue'] = 0.3
+    lu['Hach 8039, 8171, and 8192']['nitrate']['units'] = 'mg/L'
+
+    lu['usgs_f1_gran'] = {}
+    lu['usgs_f1_gran']['anc'] = {}
+    lu['usgs_f1_gran']['anc']['uppervalue'] = np.NaN
+    lu['usgs_f1_gran']['anc']['lowervalue'] = np.NaN
+    lu['usgs_f1_gran']['anc']['units'] = 'ueq/L'
+    
+    lu['USGS 09-A6.6'] = {}
+    lu['USGS 09-A6.6']['anc'] = {}
+    lu['USGS 09-A6.6']['anc']['uppervalue'] = np.NaN
+    lu['USGS 09-A6.6']['anc']['lowervalue'] = np.NaN
+    lu['USGS 09-A6.6']['anc']['units'] = 'ueq/L'
+    
+    lu['bromocrescol'] = {}
+    lu['bromocrescol']['anc'] = {}
+    lu['bromocrescol']['anc']['uppervalue'] = np.NaN
+    lu['bromocrescol']['anc']['lowervalue'] = np.NaN
+    lu['bromocrescol']['anc']['units'] = 'ueq/L'
+
+    lu['Hach TNT830'] = {}
+    lu['Hach TNT830']['ammonia'] = {}
+    lu['Hach TNT830']['ammonia']['uppervalue'] = 2
+    lu['Hach TNT830']['ammonia']['lowervalue'] = 0.015
+    lu['Hach TNT830']['ammonia']['units'] = 'ueq/L'
+
+    n_prints = 5
+    for k,v in lu.items():
+        for kk,vv in v.items():
+            if np.isnan(vv['uppervalue'])==False:
+                mask = (df['instrument']==k) & (df['Characteristic_Name']==kk) & (df['num_result']>vv['uppervalue'])
+                if len(df[mask])>0:
+                    finds = {'visits':df[mask].activity_group_id.values, 'numresults':df[mask].num_result.values}
+                    # df['DetectionQuantitationLimitMeasure/MeasureValue'] = np.where(mask, vv['uppervalue'], df['DetectionQuantitationLimitMeasure/MeasureValue'])
+                    # df['DetectionQuantitationLimitMeasure/MeasureUnitCode'] = np.where(mask, vv['units'], df['DetectionQuantitationLimitMeasure/MeasureUnitCode'])
+                    df['quantlimit'] = np.where(mask, vv['uppervalue'], df['quantlimit'])
+                    df['quantlimitunit'] = np.where(mask, vv['units'], df['quantlimitunit'])
+                    df['data_quality_flag'] = np.where(mask, 'present_greater_than_ql', df['data_quality_flag'])
+                    print('--------------------------------------------------------------------------------')
+                    print(f"QUANTITATION LIMIT UPDATED: {len(finds['numresults'])} results updated for instrument ={k}, char = {kk}")
+                    if len(finds['numresults'])>n_prints:
+                        print(f"printing first {n_prints} updates...")
+                        counter = 0
+                        for i in range(len(finds['visits'])):
+                            if counter <n_prints:
+                                print(f" visit = {finds['visits'][i]} char = {kk}, instrument = {k}: numresult ={finds['numresults'][i]} was greater than {vv['uppervalue']} {vv['units']}")
+                                counter +=1
+
+                    else:
+                        for i in range(len(finds['visits'])):
+                            print(f" visit = {finds['visits'][i]} char = {kk}, instrument = {k}: numresult ={finds['numresults'][i]} was greater than {vv['uppervalue']} {vv['units']}")
+
+            if np.isnan(vv['lowervalue'])==False:        
+                mask = (df['instrument']==k) & (df['Characteristic_Name']==kk) & (df['num_result']<vv['lowervalue'])
+                if len(df[mask])>0:
+                    finds = {'visits':df[mask].activity_group_id.values, 'numresults':df[mask].num_result.values}
+                    df['quantlimit'] = np.where(mask, vv['lowervalue'], df['quantlimit'])
+                    df['quantlimitunit'] = np.where(mask, vv['units'], df['quantlimitunit'])
+                    df['data_quality_flag'] = np.where(mask, 'present_less_than_ql', df['data_quality_flag'])
+                    print('--------------------------------------------------------------------------------')
+                    print(f"QUANTITATION LIMIT UPDATED: {len(finds['numresults'])} results updated for instrument ={k}, char = {kk}")
+                    if len(finds['numresults'])>n_prints:
+                        print(f"printing first {n_prints} updates...")
+                        counter = 0
+                        for i in range(len(finds['visits'])):
+                            if counter < n_prints:
+                                print(f" visit = {finds['visits'][i]} char = {kk}, instrument = {k}: numresult ={finds['numresults'][i]} was less than {vv['lowervalue']} {vv['units']}")
+                                counter +=1
+                    else:
+                        for i in range(len(finds['visits'])):
+                            print(f" visit = {finds['visits'][i]} char = {kk}, instrument = {k}: numresult ={finds['numresults'][i]} was less than {vv['lowervalue']} {vv['units']}")
+
+        # TODO: if the result was flagged but it shouldn't be (according to the lookup), update the flag
+    
+    return df
+
 def _make_instrument_column(df:pd.DataFrame) -> pd.DataFrame:
     """Make a column called `instrument` to carry an attribute about the method and/or equipment used for a result
 
