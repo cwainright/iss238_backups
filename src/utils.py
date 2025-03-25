@@ -477,36 +477,79 @@ def _wqp_metadata_char_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.Data
 
     return md
 
-def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
-    problems = 0
-    
-    # are any combinations of site and characteristics missing?
-    sites_missing = {}
+def _wqp_qc_repair_missing_sitechar_combinations(md:pd.DataFrame) -> pd.DataFrame:
+
+    before_len = len(md)
+
+    # for some reason ANCR has all of the characteristics, so we compare other sites to it
     ancr = md[md['SiteCode']=='NCRN_ANTI_ANCR'].CharacteristicName.unique()
+    assert len(ancr == 28) # if this is not true, the data model changed and the program should fail until the dev fixes
+
+    # Determine which sites are missing which CharacteristicNames, relative to NCRN_ANTI_ANCR
+    sites_missing = {}
     for site in md.SiteCode.unique():
         mask = (md['SiteCode']==site)
         subset = md[mask]
         chars = subset.CharacteristicName.unique()
-        if len(chars) != 28:
+        if len(chars) == len(ancr):
+            pass
+        elif len(chars) > len(ancr):
+            # if this happens, dev must re-think how to handle
+            print(f"WARNING: {site} has {len(chars)} characteristics and that's more than expected. Review the metadata file!")
+        elif len(chars) < len(ancr):
             missing_chars = [x for x in ancr if x not in chars]
-            print(f"Site {site} has {len(chars)} characteristics instead of 28")
-            print(f"    Missing: {missing_chars}")
             sites_missing[site] = missing_chars
-    
-    # find neighbors: another site in that park that has the rows we need
+
+    # count the number of rows we should be adding to the final dataframe, so we can validate the output
+    counter = 0
     for k,v in sites_missing.items():
+        counter += len(v)
+
+    # find 'neighbors': another site in that park that has the rows we need
+    # a neighbor is a site in the same park that we can borrow a metadata entry from
+    for k,v in sites_missing.items():
+        # figure out what park to check
         park = k.split('_')[1]
+        mask = (md['SiteCode']==k)
+        # collect the location attributes that we need to keep
+        ParkCode = md[mask].ParkCode.unique()[0]
+        ShortName = md[mask].ShortName.unique()[0]
+        LongName = md[mask].LongName.unique()[0]
+        SiteCode = md[mask].SiteCode.unique()[0]
+        SiteCodeWQX = md[mask].SiteCodeWQX.unique()[0]
+        SiteName = md[mask].SiteName.unique()[0]
+        Lat = md[mask].Lat.unique()[0]
+        Long = md[mask].Long.unique()[0]
         for char in v:
-            mask = (md['SiteCode'].str.contains(park)) & (md['CharacteristicName']==char)
+            mask = (md['SiteCode'].str.contains(park)) & (md['CharacteristicName']==char) # neighbor
             neighbors = md[mask]
-            if len(neighbors) == 0:
-                print(f'FAIL: {k} has no neighbors with the characteristic {char}')
-            else:
-                newrow = neighbors.iloc[0].copy()# copy those rows
-                # print(newrow)
-                # TODO: update the name attributes
-                # TODO: append the copied rows back to `md`
+
+            # program should fail if there are no neighbors, dev must address
+            assert len(neighbors) >0, print(f'FAIL: {k} has no neighbors with the characteristic {char}')
+
+            mask = (neighbors['SiteCode']==max(neighbors['SiteCode']))
+            newrow = neighbors[mask].copy()
+            newrow['ParkCode']=ParkCode
+            newrow['ShortName']=ShortName
+            newrow['LongName']=LongName
+            newrow['SiteCode']=SiteCode
+            newrow['SiteCodeWQX']=SiteCodeWQX
+            newrow['SiteName']=SiteName
+            newrow['Lat']=Lat
+            newrow['Long']=Long
+            md = pd.concat([md,newrow])
     
+    after_len = len(md)
+    
+    assert (after_len == before_len + counter), print(f"FAIL: _wqp_qc_repair_missing_sitechar_combinations() failed to reconcile broken site/char combinations")
+
+    return md
+
+def _wqp_metadata_qc(df:pd.DataFrame, md:pd.DataFrame) -> None:
+    problems = 0
+    
+    # are any combinations of site and characteristics missing?
+    md = _wqp_qc_repair_missing_sitechar_combinations(md)
     
     # Replace greenbelt with NACE
     mask = (md['ParkCode']=='GREE')
