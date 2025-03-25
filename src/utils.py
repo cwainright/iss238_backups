@@ -1130,15 +1130,16 @@ def _wqp_qc(df:pd.DataFrame) -> pd.DataFrame:
     cue_end = dt.date(2016,10,1)
     mask_cue = (pd.to_datetime(df['activity_start_date']).dt.date < cue_end) & (df['grouping_var']=='NCRN_WQ_WCHEM')
     # activity_start_date >= 2016-10-01 & activity_start_date <= '2020-01-01 ~ 'CBL'
-    cbl_start = cue_end
+    # For a time, CUE did ANC and CBL did N and P...
+    # cbl_start = cue_end
     cbl_end = dt.date(2020,1,1)
-    mask_cbl = (pd.to_datetime(df['activity_start_date']).dt.date >= cbl_start) & (pd.to_datetime(df['activity_start_date']).dt.date <= cbl_end) & (df['grouping_var']=='NCRN_WQ_WCHEM')
+    # mask_cbl = (pd.to_datetime(df['activity_start_date']).dt.date >= cbl_start) & (pd.to_datetime(df['activity_start_date']).dt.date <= cbl_end) & (df['grouping_var']=='NCRN_WQ_WCHEM') & (df['Characteristic_Name']!='anc')
     # activity_start_date > 2020-01-01 ~ 'AL'
     al_start = cbl_end
     mask_al = (pd.to_datetime(df['activity_start_date']).dt.date > al_start) & (df['grouping_var']=='NCRN_WQ_WCHEM')
 
     df['lab'] = np.where(mask_cue, 'CUE', df['lab'])
-    df['lab'] = np.where(mask_cbl, 'CBL', df['lab'])
+    # df['lab'] = np.where(mask_cbl, 'CBL', df['lab'])
     df['lab'] = np.where(mask_al, 'AL', df['lab'])
 
     # remove CUE phosphorus results
