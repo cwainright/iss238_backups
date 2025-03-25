@@ -59,12 +59,12 @@ def _add_quantitationlimit(df:pd.DataFrame) -> pd.DataFrame:
     df['quantlimit'] = np.NaN
     df['quantlimitunit'] = None
     
-    # flags = [
-    #     'present_less_than_ql'
-    #     ,'value_below_rl_actual_reported'
-    #     ,'value_below_mdl_actual_reported'
-    #     ,'value_below_mdl_method_limit_reported'
-    # ]
+    flags = [
+        'present_less_than_ql'
+        ,'value_below_rl_actual_reported'
+        ,'value_below_mdl_actual_reported'
+        ,'value_below_mdl_method_limit_reported'
+    ]
 
     # df[df['ResultDetectionConditionText'].isin(flags)][['SampleCollectionEquipmentName','CharacteristicName']].drop_duplicates(['SampleCollectionEquipmentName','CharacteristicName'])
     # this is the lookup table we need:
@@ -220,7 +220,8 @@ def _add_quantitationlimit(df:pd.DataFrame) -> pd.DataFrame:
     lu['Hach TNT830']['ammonia']['lowervalue'] = 0.015
     lu['Hach TNT830']['ammonia']['units'] = 'ueq/L'
 
-    n_prints = 5
+    n_prints = 3
+    # if the result was not flagged but it should be (according to the lookup), update the flag
     for k,v in lu.items():
         for kk,vv in v.items():
             if np.isnan(vv['uppervalue'])==False:
@@ -266,7 +267,80 @@ def _add_quantitationlimit(df:pd.DataFrame) -> pd.DataFrame:
                         for i in range(len(finds['visits'])):
                             print(f" visit = {finds['visits'][i]} char = {kk}, instrument = {k}: numresult ={finds['numresults'][i]} was less than {vv['lowervalue']} {vv['units']}")
 
-        # TODO: if the result was flagged but it shouldn't be (according to the lookup), update the flag
+    #  if the result was flagged but it shouldn't be (according to the lookup), update the flag
+    # TODO: COMMENTED UNTIL DEBUGGED
+    # for k,v in lu.items():
+    #     for kk,vv in v.items():
+    #         # cases where there is only an upper
+    #         if np.isnan(vv['uppervalue'])==False & np.isnan(vv['lowervalue']):
+    #             mask = (df['instrument']==k) & (df['Characteristic_Name']==kk) & (df['num_result']<vv['uppervalue']) & (df['data_quality_flag'].isin(flags))
+    #             if len(df[mask])>0:
+    #                 finds = {'visits':df[mask].activity_group_id.values, 'numresults':df[mask].num_result.values}
+    #                 # df['DetectionQuantitationLimitMeasure/MeasureValue'] = np.where(mask, vv['uppervalue'], df['DetectionQuantitationLimitMeasure/MeasureValue'])
+    #                 # df['DetectionQuantitationLimitMeasure/MeasureUnitCode'] = np.where(mask, vv['units'], df['DetectionQuantitationLimitMeasure/MeasureUnitCode'])
+    #                 df['quantlimit'] = np.where(mask, np.NaN, df['quantlimit'])
+    #                 df['quantlimitunit'] = np.where(mask, None, df['quantlimitunit'])
+    #                 df['data_quality_flag'] = np.where(mask, None, df['data_quality_flag'])
+    #                 print('--------------------------------------------------------------------------------')
+    #                 print(f"Quantitation limit reversed for incorrectly flagged result: {len(finds['numresults'])} results updated for instrument ={k}, char = {kk}")
+    #                 if len(finds['numresults'])>n_prints:
+    #                     print(f"printing first {n_prints} updates...")
+    #                     counter = 0
+    #                     for i in range(len(finds['visits'])):
+    #                         if counter <n_prints:
+    #                             print(f" visit = {finds['visits'][i]} char = {kk}, instrument = {k}: numresult ={finds['numresults'][i]} was NOT greater than {vv['uppervalue']} {vv['units']}")
+    #                             counter +=1
+
+    #                 else:
+    #                     for i in range(len(finds['visits'])):
+    #                         print(f" visit = {finds['visits'][i]} char = {kk}, instrument = {k}: numresult ={finds['numresults'][i]} was NOT greater than {vv['uppervalue']} {vv['units']}")
+            
+    #         # cases where there is only a lower
+    #         elif np.isnan(vv['lowervalue'])==False & np.isnan(vv['uppervalue']):
+    #             mask = (df['instrument']==k) & (df['Characteristic_Name']==kk) & (df['num_result']>vv['lowervalue']) & (df['data_quality_flag'].isin(flags))
+    #             if len(df[mask])>0:
+    #                 finds = {'visits':df[mask].activity_group_id.values, 'numresults':df[mask].num_result.values}
+    #                 # df['DetectionQuantitationLimitMeasure/MeasureValue'] = np.where(mask, vv['uppervalue'], df['DetectionQuantitationLimitMeasure/MeasureValue'])
+    #                 # df['DetectionQuantitationLimitMeasure/MeasureUnitCode'] = np.where(mask, vv['units'], df['DetectionQuantitationLimitMeasure/MeasureUnitCode'])
+    #                 df['quantlimit'] = np.where(mask, np.NaN, df['quantlimit'])
+    #                 df['quantlimitunit'] = np.where(mask, None, df['quantlimitunit'])
+    #                 df['data_quality_flag'] = np.where(mask, None, df['data_quality_flag'])
+    #                 print('--------------------------------------------------------------------------------')
+    #                 print(f"Quantitation limit reversed for incorrectly flagged result: {len(finds['numresults'])} results updated for instrument ={k}, char = {kk}")
+    #                 if len(finds['numresults'])>n_prints:
+    #                     print(f"printing first {n_prints} updates...")
+    #                     counter = 0
+    #                     for i in range(len(finds['visits'])):
+    #                         if counter <n_prints:
+    #                             print(f" visit = {finds['visits'][i]} char = {kk}, instrument = {k}: numresult ={finds['numresults'][i]} was NOT less than {vv['lowervalue']} {vv['units']}")
+    #                             counter +=1
+
+    #                 else:
+    #                     for i in range(len(finds['visits'])):
+    #                         print(f" visit = {finds['visits'][i]} char = {kk}, instrument = {k}: numresult ={finds['numresults'][i]} was NOT less than {vv['lowervalue']} {vv['units']}")
+    #         elif np.isnan(vv['lowervalue'])==False & np.isnan(vv['uppervalue'])==False:
+    #             mask = (df['instrument']==k) & (df['Characteristic_Name']==kk) & (df['num_result']>vv['lowervalue'])  & (df['num_result']<vv['uppervalue']) & (df['data_quality_flag'].isin(flags))
+    #             if len(df[mask])>0:
+    #                 finds = {'visits':df[mask].activity_group_id.values, 'numresults':df[mask].num_result.values}
+    #                 # df['DetectionQuantitationLimitMeasure/MeasureValue'] = np.where(mask, vv['uppervalue'], df['DetectionQuantitationLimitMeasure/MeasureValue'])
+    #                 # df['DetectionQuantitationLimitMeasure/MeasureUnitCode'] = np.where(mask, vv['units'], df['DetectionQuantitationLimitMeasure/MeasureUnitCode'])
+    #                 df['quantlimit'] = np.where(mask, np.NaN, df['quantlimit'])
+    #                 df['quantlimitunit'] = np.where(mask, None, df['quantlimitunit'])
+    #                 df['data_quality_flag'] = np.where(mask, None, df['data_quality_flag'])
+    #                 print('--------------------------------------------------------------------------------')
+    #                 print(f"Quantitation limit reversed for incorrectly flagged result: {len(finds['numresults'])} results updated for instrument ={k}, char = {kk}")
+    #                 if len(finds['numresults'])>n_prints:
+    #                     print(f"printing first {n_prints} updates...")
+    #                     counter = 0
+    #                     for i in range(len(finds['visits'])):
+    #                         if counter <n_prints:
+    #                             print(f" visit = {finds['visits'][i]} char = {kk}, instrument = {k}: numresult ={finds['numresults'][i]} was between {vv['lowervalue']} and {vv['uppervalue']} {vv['units']}")
+    #                             counter +=1
+
+    #                 else:
+    #                     for i in range(len(finds['visits'])):
+    #                         print(f" visit = {finds['visits'][i]} char = {kk}, instrument = {k}: numresult ={finds['numresults'][i]} was between {vv['lowervalue']} and {vv['uppervalue']} {vv['units']}")
+
     
     return df
 
