@@ -880,6 +880,7 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
     df = _wqp_qc(df=df)
     df = tf._assign_activity_id(df=df)
     df = tf._add_methodspeciationname(df=df)
+    df = tf._add_quantitationlimit(df)
 
     # import the example file
     example:pd.DataFrame = pd.read_csv(assets.EXAMPLE_WQX_WQP, nrows=1)
@@ -1171,6 +1172,18 @@ def _wqp_qc(df:pd.DataFrame) -> pd.DataFrame:
     mask = (df['ysi_increment_notes'].str.contains('QA')) & (df['grouping_var']=='NCRN_WQ_WQUALITY') & (df['data_quality_flag']=='present_not_on_datasheet')
     # mask = (df['ResultDetectionConditionText']=='QA; repeated sample at same location')
     df['data_quality_flag'] = np.where(mask, 'QA; repeated sample at same location', df['data_quality_flag'])
+
+    # # quantitation_limit
+    # # always report the measured value
+    # # WONT DO: update the flag to 'Not Detected'
+    # relevant_flags = [
+    #     'present_less_than_ql'
+    #     ,'value_below_rl_actual_reported'
+    #     ,'value_below_mdl_actual_reported'
+    #     ,'value_below_mdl_method_limit_reported'
+    #     ]
+    # mask = (df['data_quality_flag'].isin(relevant_flags))
+    # df['data_quality_flag'] = np.where(mask, 'Not Detected', df['data_quality_flag']) # this is the WQP flag per pg 6 https://www.epa.gov/sites/default/files/2020-08/documents/wqx_web_template_user_guide.pdf
 
     df.reset_index(inplace=True, drop=True)
 
