@@ -1150,6 +1150,13 @@ def _wqp_qc(df:pd.DataFrame) -> pd.DataFrame:
     mask = (df['lab']=='CUE') & (df['Characteristic_Name'].isin(nitrogen_chars))
     df = df[~mask]
 
+    # case-statements to fix flagging ambiguity
+    # 'equipment_malfunction'
+    # When the result is flagged as 'equipment_malfunction', the result should be updated to NA.
+    mask = (df['data_quality_flag']=='equipment_malfunction') & (df['Result_Text'].isna()==False)
+    df['Result_Text'] = np.where(mask, None, df['Result_Text'])
+
+
     df.reset_index(inplace=True, drop=True)
 
     return df
