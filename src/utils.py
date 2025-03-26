@@ -1179,9 +1179,16 @@ def _wqp_qc(df:pd.DataFrame) -> pd.DataFrame:
     # mask = (df['data_quality_flag'].isin(relevant_flags))
     # df['data_quality_flag'] = np.where(mask, 'Not Detected', df['data_quality_flag']) # this is the WQP flag per pg 6 https://www.epa.gov/sites/default/files/2020-08/documents/wqx_web_template_user_guide.pdf
 
-    # TODO: if the 'sampleability' is 'Unable to Access Site', and the 'data_quality_flag' is NA, update the flag
+    # if the 'sampleability' is 'Unable to Access Site', and the 'data_quality_flag' is NA, update the flag
     # filter-out the tds rows for <=2024
     # others can be 'not-on_datasheet'
+    cutoff_date = dt.date(2025,1,1)
+    mask = (pd.to_datetime(df['activity_start_date']).dt.date <= cutoff_date) & (df['Characteristic_Name']=='tds') 
+    df = df[~mask] # gets rid of TDS
+
+    mask = (df['sampleability']== 'Unable to Access Site') & (df['data_quality_flag'].isna())
+    df['data_quality_flag'] = np.where(mask, 'not_on_datasheet', df['data_quality_flag']) # update flag for 'Unable to Access Site'
+
 
     df.reset_index(inplace=True, drop=True)
 
