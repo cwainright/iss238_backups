@@ -89,10 +89,6 @@ def backup_water(dest_dir:str=assets.DM_WATER_BACKUP_FPATH, verbose:bool=False, 
         wtb._agol_hosted_feature(newpath=newpath, in_fc=assets.WATER_AGOL_ITEM_ID, verbose=verbose, dir_ext=dir_ext, download_types=['CSV'])
     else:
         wtb._agol_hosted_feature(newpath=newpath, in_fc=assets.WATER_AGOL_ITEM_ID, verbose=verbose, dir_ext=dir_ext, download_types=['CSV','File Geodatabase'])
-    
-    # TODO: take the latest verified records, replace their counterparts in the wqx for dan et al
-    # wqp_wqx()
-    # dashboard_etl()
 
     end_time = time.time()
     elapsed_time = end_time - start_time
@@ -288,7 +284,6 @@ def dashboard_etl(test_run:bool=False, include_deletes:bool=False, verbose:bool=
             print(f'`dashboard_etl()` completed. Elapsed time: {elapsed_time}')
         return df
     else:
-        # TODO:
         fname = wtb._save_dashboard_csv(df, newest_data_folder, verbose)
         wtb._load_feature(fname, assets.WATER_PROD_QC_DASHBOARD_BACKEND, verbose)
         if verbose == True:
@@ -977,7 +972,7 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
             ,'ResultLaboratoryCommentText':None
             ,'ResultDetectionQuantitationLimitUrl':None
             ,'DetectionQuantitationLimitTypeName':None
-            # ,'DetectionQuantitationLimitMeasure/MeasureValue':np.NaN # TODO: update with real values
+            # ,'DetectionQuantitationLimitMeasure/MeasureValue':np.NaN
             # ,'DetectionQuantitationLimitMeasure/MeasureUnitCode':None
             ,'LabSamplePreparationUrl':None
             ,'LastUpdated':dt.datetime.now()
@@ -1017,16 +1012,12 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
     
     wqp = _recode_wqp_chars(wqp=wqp)
 
-    # TODO: write wqp csv if test_run == False
     if test_run == False:
         fname = f'{newest_data_folder}\\wqp.csv'
         wqp.to_csv(fname, index=False)
         print(f'\nWrote wqp to: {fname}\n')
         mdfname = f'{newest_data_folder}\\wqp_ncrnwater_metadata.csv'
         md = wqp_metadata(df=fname, write=mdfname)
-
-    # TODO: make metadata and write metadata to the same file as wqp csv
-    # md = wqp_metadata()
 
     return wqp
 
