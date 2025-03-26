@@ -1222,6 +1222,7 @@ def _quality_control(df:pd.DataFrame) -> pd.DataFrame:
         ,'value_below_mdl_method_limit_reported'
         ,'value_below_rl_actual_reported'
         ,'equipment_malfunction'
+        ,'QA; repeated sample at same location'
     ] 
     statuses = ['verified']
     mask = (df['review_status'].isin(statuses)) & (df['data_quality_flag'].isin(FLAGS)==False) & (df['data_quality_flag'].isna()==False)

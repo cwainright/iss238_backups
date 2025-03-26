@@ -875,12 +875,12 @@ def wqp_wqx(test_run:bool=False) -> pd.DataFrame:
     
     # Transform steps
     df:pd.DataFrame = tf._transform(df_dict=df_dict, include_deletes=include_deletes)
-        # QC checks
-    df = tf._quality_control(df)
+    # QC checks
     df = _wqp_qc(df=df)
     df = tf._assign_activity_id(df=df)
     df = tf._add_methodspeciationname(df=df)
     df = tf._add_quantitationlimit(df)
+    df = tf._quality_control(df)
 
     # import the example file
     example:pd.DataFrame = pd.read_csv(assets.EXAMPLE_WQX_WQP, nrows=1)
@@ -1187,6 +1187,10 @@ def _wqp_qc(df:pd.DataFrame) -> pd.DataFrame:
     #     ]
     # mask = (df['data_quality_flag'].isin(relevant_flags))
     # df['data_quality_flag'] = np.where(mask, 'Not Detected', df['data_quality_flag']) # this is the WQP flag per pg 6 https://www.epa.gov/sites/default/files/2020-08/documents/wqx_web_template_user_guide.pdf
+
+    # TODO: if the 'sampleability' is 'Unable to Access Site', and the 'data_quality_flag' is NA, update the flag
+    # filter-out the tds rows for <=2024
+    # others can be 'not-on_datasheet'
 
     df.reset_index(inplace=True, drop=True)
 
