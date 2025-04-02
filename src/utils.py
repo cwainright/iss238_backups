@@ -329,11 +329,53 @@ def wqp_metadata(df:str='data/wqp.csv', write:str='') -> pd.DataFrame:
 
     md = _wqp_metadata_qc(df, md)
 
+    md = _wqp_metadata_additions(md)
+
     if write != '':
         md.to_csv(write, index=False)
         print(f"\nWrote WQP Metadata to: {write}\n")
     else:
         print("WQP Metadata dataframe returned")
+    return md
+
+def _wqp_metadata_additions(md:pd.DataFrame) -> pd.DataFrame:
+    """Add missing thresholds"""
+
+    before_rows = len(md)
+    before_columns = md.columns
+
+    # read the additions
+    fpath = r'data\nutrient_threshholds_20250402.xlsx'
+    adds = pd.read_excel(fpath)
+    mask = (adds['Units']=='mg/l')
+    adds['Units'] = np.where(mask, 'mg/L', adds['Units'])# fix units
+    adds['keyf'] = adds['SiteCode']+adds['CharacteristicName']
+    assert(len(adds) == len(adds.keyf.unique())) # no duplicates allowed
+
+    md['keyf'] = md['SiteCode']+md['CharacteristicName']
+    assert(len(md) == len(md.keyf.unique())) # no duplicates allowed
+
+    for k in adds.keyf.unique():
+        mask = (adds['keyf']==k)
+        subset = adds[mask]
+        unit = subset.Units.values[0]
+        upperpoint = subset.UpperPoint.values[0]
+        upperdescription = subset.UpperDescription.values[0]
+        assessmentdetail = subset.AssessmentDetails.values[0]
+        mask = (md['keyf']==k)
+        md['Units'] = np.where(mask, unit, md['Units'])
+        md['UpperPoint'] = np.where(mask, upperpoint, md['UpperPoint'])
+        md['UpperDescription'] = np.where(mask, upperdescription, md['UpperDescription'])
+        md['AssessmentDetails'] = np.where(mask, assessmentdetail, md['AssessmentDetails'])
+
+    del md['keyf']
+
+    after_rows = len(md)
+    after_columns = md.columns
+
+    assert before_rows == after_rows # sanity check, we should not be adding rows
+    assert all(before_columns == after_columns) # sanity check, we should not be adding columns
+
     return md
 
 def _wqp_metadata_char_incongruency(df:pd.DataFrame, md:pd.DataFrame) -> pd.DataFrame:
