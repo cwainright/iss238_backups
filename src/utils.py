@@ -331,11 +331,187 @@ def wqp_metadata(df:str='data/wqp.csv', write:str='') -> pd.DataFrame:
 
     md = _wqp_metadata_additions(md)
 
+    # add `IsActive` column to metadata file
+    md = _wqp_metadata_isactive(df, md)
+
     if write != '':
         md.to_csv(write, index=False)
         print(f"\nWrote WQP Metadata to: {write}\n")
     else:
         print("WQP Metadata dataframe returned")
+    return md
+
+def _wqp_metadata_isactive(df: pd.DataFrame, md: pd.DataFrame) -> pd.DataFrame:
+    """Add a column `IsActive` to the metadata dataframe
+
+    `IsActive` is a bool field
+    True indicates that the combination of CharacteristicName and SiteName are active **at the time of generating the dataset**
+    I.e., this function does not intend to back-date periods of time during which something was active
+    The purpose here is to specify what is **currently** active
+    
+    `IsActive` is non-nullable; all combinations of ['CharacteristicName', 'SiteName'] are required to be either True or False
+    The lookup table(s) containing these values must be easy to update in the future when sites and characteristics are inevitably deprecated
+
+    The lookup will be two parts: Sites and Characteristics
+    A site can be True or False (active or not; column md.IsActiveSiteCode)
+    A characteristic can be True or False (active or not; column md.IsActiveCharacteristicName)
+
+    The function then takes the two lookups and determines which combinations are active (column md.IsActive)
+    If either site or characteristic is False, the combination of the two is False, and `IsActive` evaluates to False
+
+    Args:
+        df (pd.DataFrame): dataframe of NCRN water quality records in WQP format
+        md (pd.DataFrame): dataframe of metadata about `df` in NCRNWater R package format
+
+    Returns:
+        pd.DataFrame: input dataframe `md` with three additional columns: ['IsActiveSiteCode', 'IsActiveCharacteristicName', 'IsActive']
+    """
+    df_before_len = len(df)
+    md_before_len = len(md)
+    df_cols_before = df.columns
+    md_cols_before = md.columns
+
+    lu_char = {x : None for x in md.CharacteristicName.unique()} # base-case is None so that we can easily check that the lookup is complete without accidently including or excluding info (if base-case was True or False)
+    lu_site = {x : None for x in md.SiteCode.unique()}
+
+    # lookup tables
+    # <key> : <True or False: is the key active at the time of generating the dataset>
+    lu_char = {
+        'ANC': True
+        ,'AirPress': True
+        ,'AirTemp': True
+        ,'Algae': True
+        ,'AlgaeColor': True
+        ,'Conductivity': True
+        ,'DOmg': True
+        ,'DOper': True
+        ,'Depth': True
+        ,'Discharge': True
+        ,'FlowCondition': True
+        ,'SC': True
+        ,'Salinity': True
+        ,'TDS': True
+        ,'TotalN': True
+        ,'TotalP': True
+        ,'Velocity': True
+        ,'WaterAppearance': True
+        ,'WaterTemp': True
+        ,'Weather': True
+        ,'WetWidth': True
+        ,'pH': True
+
+        ,'TotalDN': False
+        ,'TotalDP': False
+        ,'Ammonia': False
+        ,'Nitrate': False
+        ,'Orthophosphate': False
+        ,'Turbidity': False
+    }
+
+    lu_site = {
+
+        'NCRN_ANTI_SHCK': True
+        ,'NCRN_CATO_BGHC': True
+        ,'NCRN_CATO_BLBZ': True
+        ,'NCRN_CATO_OWCK': True
+        ,'NCRN_GWMP_MICR': True
+        ,'NCRN_GWMP_MIRU': True
+        ,'NCRN_GWMP_PIRU': True
+        ,'NCRN_GWMP_TURU': True
+        ,'NCRN_HAFE_FLSP': True
+        ,'NCRN_MANA_YOBR': True
+        ,'NCRN_MONO_BUCK': True
+        ,'NCRN_MONO_GAMI': True
+        ,'NCRN_NACE_HECR': True
+        ,'NCRN_NACE_OXRU': True
+        ,'NCRN_NACE_STCK': True
+        ,'NCRN_PRWI_BONE': True
+        ,'NCRN_PRWI_CARU': True
+        ,'NCRN_PRWI_MARU': True
+        ,'NCRN_PRWI_MBBR': True
+        ,'NCRN_PRWI_NFQC': True
+        ,'NCRN_PRWI_ORRU': True
+        ,'NCRN_PRWI_SFQC': True
+        ,'NCRN_PRWI_SORU': True
+        ,'NCRN_PRWI_TARU': True
+        ,'NCRN_ROCR_BAKE': True
+        ,'NCRN_ROCR_BRBR': True
+        ,'NCRN_ROCR_DUOA': True
+        ,'NCRN_ROCR_FEBR': True
+        ,'NCRN_ROCR_KLVA': True
+        ,'NCRN_ROCR_LUBR': True
+        ,'NCRN_ROCR_NOST': True
+        ,'NCRN_ROCR_PHBR': True
+        ,'NCRN_ROCR_PYBR': True
+        ,'NCRN_ROCR_R630': True
+        ,'NCRN_ROCR_ROC3': True
+        ,'NCRN_WOTR_CHCK': True
+        ,'NCRN_WOTR_WOTR': True
+
+        ,'NCRN_ANTI_ANCR': False
+        ,'NCRN_GWMP_DIRU': False
+        ,'NCRN_GWMP_DORU': False
+        ,'NCRN_GWMP_GUBR': False
+        ,'NCRN_MANA_CHBR': False
+        ,'NCRN_MANA_DOBR': False
+        ,'NCRN_MANA_HOBR': False
+        ,'NCRN_MONO_HARU': False
+        ,'NCRN_NACE_ACCK': False
+        ,'NCRN_NACE_FTDU': False
+        ,'NCRN_PRWI_MBCH': False
+        ,'NCRN_PRWI_NOBR': False
+        ,'NCRN_PRWI_QUCR': False
+        ,'NCRN_PRWI_SFQR': False
+        ,'NCRN_ROCR_EGWA': False
+        ,'NCRN_ROCR_ROCR': False
+        ,'NCRN_ROCR_SVPS': False
+    }
+
+    # check that lookup tables are complete
+    counter = 0
+    for k,v in lu_site.items():
+        if v is True:
+            counter+=1
+    if counter != 37:
+        print(f"WARNING! you have {counter} active sites in utils._wqp_metadata_isactive() but we expect 37 as of Apr 2025.")
+
+    lus = {
+        'SiteCode':lu_site
+        ,'CharacteristicName':lu_char
+        }
+    assert len(lu_site) == len(df.MonitoringLocationIdentifier.unique())
+    assert len(lu_char) == len(df.CharacteristicName.unique())
+
+    # assign `IsActive` for each individual lookup
+    for k,v in lus.items():
+        newcol = f'IsActive{k}'
+        md[newcol] = None
+        for kk,vv in lus[k].items():
+            if vv is None:
+                print(f"WARNING! Your lookup table {k} is incomplete in utils._wqp_metadata_isactive(): '{kk}': {vv}")
+            else:
+                mask = (md[k] == kk)
+                md[newcol] = np.where(mask, vv, md[newcol])
+
+    # assign `IsActive` for the combination of site and characteristic
+    md['IsActive'] = None
+    mask = (md['IsActiveSiteCode']==True) & (md['IsActiveCharacteristicName']==True)
+    md['IsActive'] = np.where(mask, True, False)
+
+    # sanity checks
+    df_after_len = len(df)
+    md_after_len = len(md)
+    md_cols_after = md.columns
+    df_cols_after = df.columns
+    assert df_before_len == df_after_len
+    assert md_before_len == md_after_len
+    assert all(df_cols_before == df_cols_after)
+    assert all(md_cols_before == [x for x in md.columns if 'isactive' not in x.lower()])
+    assert len(md_cols_before)+3 == len(md_cols_after)
+    assert len(md[md['IsActive'].isna()])==0
+    assert len(md[md['IsActiveCharacteristicName'].isna()])==0
+    assert len(md[md['IsActiveSiteCode'].isna()])==0
+
     return md
 
 def _wqp_metadata_additions(md:pd.DataFrame) -> pd.DataFrame:
