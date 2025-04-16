@@ -1354,12 +1354,12 @@ def _wqp_qc(df:pd.DataFrame) -> pd.DataFrame:
     df['lab'] = np.where(mask_al, 'AL', df['lab'])
 
     # remove CUE phosphorus results
-    phosphorus_chars = ['orthophosphate', 'tp', 'tdp', 'ammonia']
+    phosphorus_chars = ['orthophosphate', 'tp', 'tdp']
     mask = (df['lab']=='CUE') & (df['Characteristic_Name'].isin(phosphorus_chars))
     df = df[~mask]
 
     # remove CUE nitrogen results
-    nitrogen_chars = ['nitrate', 'tn', 'tdn']
+    nitrogen_chars = ['nitrate', 'tn', 'tdn', 'ammonia']
     mask = (df['lab']=='CUE') & (df['Characteristic_Name'].isin(nitrogen_chars))
     df = df[~mask]
 
