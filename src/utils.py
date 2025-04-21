@@ -380,26 +380,26 @@ def _wqp_metadata_isactive(df: pd.DataFrame, md: pd.DataFrame) -> pd.DataFrame:
         'ANC': True
         ,'AirPress': True
         ,'AirTemp': True
-        ,'Algae': True
-        ,'AlgaeColor': True
         ,'Conductivity': True
         ,'DOmg': True
         ,'DOper': True
         ,'Depth': True
         ,'Discharge': True
-        ,'FlowCondition': True
         ,'SC': True
         ,'Salinity': True
         ,'TDS': True
         ,'TotalN': True
         ,'TotalP': True
         ,'Velocity': True
-        ,'WaterAppearance': True
         ,'WaterTemp': True
-        ,'Weather': True
         ,'WetWidth': True
         ,'pH': True
-
+        
+        ,'FlowCondition': False
+        ,'Algae': False
+        ,'AlgaeColor': False
+        ,'WaterAppearance': False
+        ,'Weather': False
         ,'TotalDN': False
         ,'TotalDP': False
         ,'Ammonia': False
